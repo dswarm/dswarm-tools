@@ -43,6 +43,8 @@
 		<version.maven.plugin.license>2.11</version.maven.plugin.license>
 		<version.jersey-client>2.22.2</version.jersey-client>
 		<guava.version>19.0</guava.version>
+		<jackson.version>2.7.3</jackson.version>
+		<version.apache.commons>3.4</version.apache.commons>
 		<junit.version>4.12</junit.version>
 		<version.slf4j.api>1.7.21</version.slf4j.api>
 		<version.logback>1.1.7</version.logback>
@@ -256,6 +258,24 @@
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
 			<version>${guava.version}</version>
+		</dependency>
+
+		<!-- jackson -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>${version.apache.commons}</version>
 		</dependency>
 
 		<!-- Logging -->
