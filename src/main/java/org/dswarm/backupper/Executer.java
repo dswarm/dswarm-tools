@@ -17,6 +17,7 @@ package org.dswarm.backupper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import rx.Observable;
 
 /**
  * @author tgaengler
@@ -25,11 +26,15 @@ public class Executer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Executer.class);
 
-	private static void executeExport(final String dswarmBackendAPIBaseURI) {
+	private static void executeExport(final String dswarmBackendAPIBaseURI, final String exportDirectoryName) {
 
-		final DswarmBackendAPIClient dswarmBackendAPIClient = new DswarmBackendAPIClient();
+		final ProjectExporter projectExporter = new ProjectExporter(dswarmBackendAPIBaseURI);
 
-		dswarmBackendAPIClient.fetchProjects(dswarmBackendAPIBaseURI, "");
+		final Observable<String> projectDescriptionJSONStringObservable = projectExporter.exportProjects(exportDirectoryName);
+
+		Iterable<String> projectIds = projectDescriptionJSONStringObservable.toBlocking().toIterable();
+
+		projectIds.forEach(System.out::println);
 	}
 
 	public static void main(final String[] args) {
@@ -37,16 +42,17 @@ public class Executer {
 		// 0. read path from arguments
 		if (args == null || args.length <= 0) {
 
-			LOG.error("cannot execute export - no d:swarm backend API base URI given as commandline parameter");
+			LOG.error("cannot execute export - no d:swarm backend API base URI and export directory name are given as commandline parameter");
 
 			return;
 		}
 
 		final String dswarmBackendAPIBaseURI = args[0];
+		final String exportDirectoryName = args[1];
 
 		try {
 
-			executeExport(dswarmBackendAPIBaseURI);
+			executeExport(dswarmBackendAPIBaseURI, exportDirectoryName);
 		} catch (final Exception e) {
 
 			LOG.error("something went wrong at import execution.", e);

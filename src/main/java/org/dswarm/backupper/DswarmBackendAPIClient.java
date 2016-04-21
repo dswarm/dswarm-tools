@@ -25,9 +25,11 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.rx.RxWebTarget;
@@ -40,6 +42,8 @@ import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Scheduler;
 import rx.schedulers.Schedulers;
+
+import org.dswarm.common.types.Tuple;
 
 /**
  * Created by tgaengler on 20.04.16.
@@ -56,7 +60,7 @@ public class DswarmBackendAPIClient {
 	private static final String DSWARM_PROJECT_EXPORTER_THREAD_NAMING_PATTERN = "dswarm-project-exporter-%d";
 	private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool(
 			new BasicThreadFactory.Builder().daemon(false).namingPattern(DSWARM_PROJECT_EXPORTER_THREAD_NAMING_PATTERN).build());
-	private static final Scheduler scheduler = Schedulers.from(EXECUTOR_SERVICE);
+	private static final Scheduler SCHEDULER = Schedulers.from(EXECUTOR_SERVICE);
 
 	private static final ClientBuilder BUILDER = ClientBuilder.newBuilder().register(MultiPartFeature.class)
 			.property(ClientProperties.CHUNKED_ENCODING_SIZE, CHUNK_SIZE)
@@ -64,6 +68,8 @@ public class DswarmBackendAPIClient {
 			.property(ClientProperties.OUTBOUND_CONTENT_LENGTH_BUFFER, CHUNK_SIZE)
 			.property(ClientProperties.CONNECT_TIMEOUT, REQUEST_TIMEOUT)
 			.property(ClientProperties.READ_TIMEOUT, REQUEST_TIMEOUT);
+
+	private static final Client CLIENT = BUILDER.register(new LoggingFilter()).build();
 
 	private static final ObjectMapper MAPPER = new ObjectMapper()
 			.setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
@@ -74,28 +80,25 @@ public class DswarmBackendAPIClient {
 	private static final String PROJECTS_IDENTIFIER = "/projects";
 	private static final String FORMAT_IDENTIFIER = "format";
 	private static final String SHORT_FORMAT_IDENTIFIER = "short";
-	public static final String UUID_IDENTIFIER = "uuid";
+	private static final String UUID_IDENTIFIER = "uuid";
+	private static final String SLASH = "/";
 
-	private String dswarmBackendAPIBaseURI;
+	private final String dswarmBackendAPIBaseURI;
 
-
-	// Observable<String>
-	public void fetchProjects(final String dswarmBackendAPIBaseURI, final String exportFolder) {
+	public DswarmBackendAPIClient(final String dswarmBackendAPIBaseURI) {
 
 		this.dswarmBackendAPIBaseURI = dswarmBackendAPIBaseURI;
-
-		// 1. retrieve all projects (in short form)
-		final Observable<String> projectIdsObservable = retrieveAllProjectIds();
-
-		Iterable<String> projectIds = projectIdsObservable.toBlocking().toIterable();
-
-		projectIds.forEach(projectId -> System.out.println(projectId));
-
-		// 2. for each project: retrieve complete project
-		// 3. store each project in a separate file
 	}
 
-	public Observable<String> retrieveAllProjectIds() {
+	public Observable<Tuple<String, String>> fetchProjects() {
+
+		// 1. retrieve all projects (in short form)
+		return retrieveAllProjectIds()
+				// 2. for each project: retrieve complete project
+				.flatMap(this::retrieveProject);
+	}
+
+	private Observable<String> retrieveAllProjectIds() {
 
 		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(PROJECTS_IDENTIFIER);
 
@@ -105,7 +108,7 @@ public class DswarmBackendAPIClient {
 				.rx();
 
 		return rx.get(String.class)
-				.subscribeOn(scheduler)
+				.observeOn(SCHEDULER)
 				.map(projectDescriptions -> {
 
 					try {
@@ -113,16 +116,66 @@ public class DswarmBackendAPIClient {
 						return MAPPER.readValue(projectDescriptions, ArrayNode.class);
 					} catch (final IOException e) {
 
-						throw DswarmBackupperError.wrap(new DswarmBackupperException("something went wrong, while trying to retrieve short descriptions of all projects", e));
+						final String message = "something went wrong, while trying to retrieve short descriptions of all projects";
+
+						LOG.error(message, e);
+
+						throw DswarmBackupperError.wrap(new DswarmBackupperException(message, e));
 					}
 				})
 				.flatMap(projectDescriptionsJSON -> Observable.from(projectDescriptionsJSON)
 						.map(projectDescriptionJSON -> projectDescriptionJSON.get(UUID_IDENTIFIER).asText()));
 	}
 
-	private Client client() {
+	private Observable<Tuple<String, String>> retrieveProject(final String projectIdentifier) {
 
-		return BUILDER.register(new LoggingFilter()).build();
+		LOG.debug("trying to retrieve full project description for project '{}'", projectIdentifier);
+
+		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(PROJECTS_IDENTIFIER + SLASH + projectIdentifier);
+
+		final RxObservableInvoker rx = rxWebTarget.request()
+				.accept(MediaType.APPLICATION_JSON_TYPE)
+				.rx();
+
+		return rx.get(String.class)
+				.observeOn(SCHEDULER)
+				.map(projectDescriptionJSONString -> {
+
+					LOG.debug("retrieved full project description for project '{}'", projectIdentifier);
+
+					try {
+
+						return MAPPER.readValue(projectDescriptionJSONString, ObjectNode.class);
+					} catch (final IOException e) {
+
+						final String message = String.format("something went wrong, while trying to transform full description of project %s", projectIdentifier);
+
+						LOG.error(message, e);
+
+						throw DswarmBackupperError.wrap(new DswarmBackupperException(message, e));
+					}
+				})
+				.map(projectDescriptionJSON -> {
+
+					try {
+
+						final String projectDescriptionJSONString = MAPPER.writeValueAsString(projectDescriptionJSON);
+
+						return Tuple.tuple(projectIdentifier, projectDescriptionJSONString);
+					} catch (final JsonProcessingException e) {
+
+						final String message = String.format("something went wrong, while trying to transform full description of project %s", projectIdentifier);
+
+						LOG.error(message, e);
+
+						throw DswarmBackupperError.wrap(new DswarmBackupperException(message, e));
+					}
+				});
+	}
+
+	private static Client client() {
+
+		return CLIENT;
 	}
 
 	private WebTarget target() {
