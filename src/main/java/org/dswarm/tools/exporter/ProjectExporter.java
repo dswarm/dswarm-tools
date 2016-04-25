@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dswarm.backupper;
+package org.dswarm.tools.exporter;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -25,6 +25,12 @@ import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Scheduler;
 import rx.schedulers.Schedulers;
+
+import org.dswarm.common.types.Tuple;
+import org.dswarm.tools.DswarmBackendAPIClient;
+import org.dswarm.tools.DswarmToolsError;
+import org.dswarm.tools.DswarmToolsException;
+import org.dswarm.tools.utils.FileUtils;
 
 /**
  * @author tgaengler
@@ -50,34 +56,36 @@ public final class ProjectExporter {
 		return dswarmBackendAPIClient.fetchProjects()
 				.observeOn(SCHEDULER)
 				// 3. store each project in a separate file
-				.map(projectDescription -> {
-
-					final String projectIdentifier = projectDescription.v1();
-					final String projectDescriptionJSONString = projectDescription.v2();
-
-					final String fileName = buildFileName(projectIdentifier);
-
-					LOG.debug("trying to export (write) full project description for project '{}' to file '{}/{}'", projectIdentifier, exportDirectoryName, fileName);
-
-					try {
-
-						FileUtils.writeToFile(projectDescriptionJSONString, exportDirectoryName, fileName);
-
-						LOG.debug("exported (wrote) full project description for project '{}' to file '{}/{}'", projectIdentifier, exportDirectoryName, fileName);
-
-						return projectDescriptionJSONString;
-					} catch (final IOException e) {
-
-						final String message = String.format("something went wrong, while trying to write project '%s' as file '%s' in folder '%s'", projectIdentifier, fileName, exportDirectoryName);
-
-						LOG.error(message, e);
-
-						throw DswarmBackupperError.wrap(new DswarmBackupperException(message, e));
-					}
-				});
+				.map(projectDescription -> writeExportProjectToFile(exportDirectoryName, projectDescription));
 	}
 
-	private static String buildFileName(String projectIdentifier) {
+	private static String writeExportProjectToFile(final String exportDirectoryName, final Tuple<String, String> projectDescription) {
+
+		final String projectIdentifier = projectDescription.v1();
+		final String projectDescriptionJSONString = projectDescription.v2();
+
+		final String fileName = buildFileName(projectIdentifier);
+
+		LOG.debug("trying to export (write) full project description for project '{}' to file '{}/{}'", projectIdentifier, exportDirectoryName, fileName);
+
+		try {
+
+			FileUtils.writeToFile(projectDescriptionJSONString, exportDirectoryName, fileName);
+
+			LOG.debug("exported (wrote) full project description for project '{}' to file '{}/{}'", projectIdentifier, exportDirectoryName, fileName);
+
+			return projectDescriptionJSONString;
+		} catch (final IOException e) {
+
+			final String message = String.format("something went wrong, while trying to write project '%s' as file '%s' in folder '%s'", projectIdentifier, fileName, exportDirectoryName);
+
+			LOG.error(message, e);
+
+			throw DswarmToolsError.wrap(new DswarmToolsException(message, e));
+		}
+	}
+
+	private static String buildFileName(final String projectIdentifier) {
 
 		return String.format("project.%s.json", projectIdentifier);
 	}

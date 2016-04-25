@@ -22,10 +22,10 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<url>http://dswarm.org/</url>
-	<name>D:SWARM Backupper</name>
+	<name>D:SWARM Tools</name>
 
 	<groupId>org.dswarm</groupId>
-	<artifactId>dswarm-backupper</artifactId>
+	<artifactId>dswarm-tools</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
 	<properties>

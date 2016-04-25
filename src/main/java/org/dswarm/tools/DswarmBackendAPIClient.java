@@ -13,22 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dswarm.backupper;
+package org.dswarm.tools;
 
-import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.glassfish.jersey.client.ClientProperties;
@@ -44,6 +39,7 @@ import rx.Scheduler;
 import rx.schedulers.Schedulers;
 
 import org.dswarm.common.types.Tuple;
+import org.dswarm.tools.utils.FileUtils;
 
 /**
  * @author tgaengler
@@ -58,9 +54,14 @@ public class DswarmBackendAPIClient {
 	private static final int REQUEST_TIMEOUT = 20000000;
 
 	private static final String DSWARM_PROJECT_EXPORTER_THREAD_NAMING_PATTERN = "dswarm-project-exporter-%d";
-	private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool(
+	private static final ExecutorService EXPORT_EXECUTOR_SERVICE = Executors.newCachedThreadPool(
 			new BasicThreadFactory.Builder().daemon(false).namingPattern(DSWARM_PROJECT_EXPORTER_THREAD_NAMING_PATTERN).build());
-	private static final Scheduler SCHEDULER = Schedulers.from(EXECUTOR_SERVICE);
+	private static final Scheduler EXPORT_SCHEDULER = Schedulers.from(EXPORT_EXECUTOR_SERVICE);
+
+	private static final String DSWARM_PROJECT_IMPORTER_THREAD_NAMING_PATTERN = "dswarm-project-importer-%d";
+	private static final ExecutorService IMPORT_EXECUTOR_SERVICE = Executors.newCachedThreadPool(
+			new BasicThreadFactory.Builder().daemon(false).namingPattern(DSWARM_PROJECT_IMPORTER_THREAD_NAMING_PATTERN).build());
+	private static final Scheduler IMPORT_SCHEDULER = Schedulers.from(IMPORT_EXECUTOR_SERVICE);
 
 	private static final ClientBuilder BUILDER = ClientBuilder.newBuilder().register(MultiPartFeature.class)
 			.property(ClientProperties.CHUNKED_ENCODING_SIZE, CHUNK_SIZE)
@@ -71,17 +72,13 @@ public class DswarmBackendAPIClient {
 
 	private static final Client CLIENT = BUILDER.register(new LoggingFilter()).build();
 
-	private static final ObjectMapper MAPPER = new ObjectMapper()
-			.setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
-			.setSerializationInclusion(JsonInclude.Include.NON_NULL)
-
-			.configure(SerializationFeature.INDENT_OUTPUT, true);
-
 	private static final String PROJECTS_IDENTIFIER = "/projects";
 	private static final String FORMAT_IDENTIFIER = "format";
 	private static final String SHORT_FORMAT_IDENTIFIER = "short";
 	private static final String UUID_IDENTIFIER = "uuid";
 	private static final String SLASH = "/";
+	private static final String ROBUST_IDENTIFIER = "robust";
+	private static final String ROBUST_IMPORT_PROJECT_ENDPOINT = PROJECTS_IDENTIFIER + SLASH + ROBUST_IDENTIFIER;
 
 	private final String dswarmBackendAPIBaseURI;
 
@@ -98,6 +95,11 @@ public class DswarmBackendAPIClient {
 				.flatMap(this::retrieveProject);
 	}
 
+	public Observable<Tuple<String, String>> importProjects(final Observable<Tuple<String, String>> projectDescriptionTupleObservable) {
+
+		return projectDescriptionTupleObservable.flatMap(this::importProject);
+	}
+
 	private Observable<String> retrieveAllProjectIds() {
 
 		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(PROJECTS_IDENTIFIER);
@@ -108,20 +110,12 @@ public class DswarmBackendAPIClient {
 				.rx();
 
 		return rx.get(String.class)
-				.observeOn(SCHEDULER)
-				.map(projectDescriptions -> {
+				.observeOn(EXPORT_SCHEDULER)
+				.map(projectDescriptionsJSON -> {
 
-					try {
+					final String errorMessage = "something went wrong, while trying to retrieve short descriptions of all projects";
 
-						return MAPPER.readValue(projectDescriptions, ArrayNode.class);
-					} catch (final IOException e) {
-
-						final String message = "something went wrong, while trying to retrieve short descriptions of all projects";
-
-						LOG.error(message, e);
-
-						throw DswarmBackupperError.wrap(new DswarmBackupperException(message, e));
-					}
+					return FileUtils.deserializeAsArrayNode(projectDescriptionsJSON, errorMessage);
 				})
 				.flatMap(projectDescriptionsJSON -> Observable.from(projectDescriptionsJSON)
 						.map(projectDescriptionJSON -> projectDescriptionJSON.get(UUID_IDENTIFIER).asText()));
@@ -138,39 +132,54 @@ public class DswarmBackendAPIClient {
 				.rx();
 
 		return rx.get(String.class)
-				.observeOn(SCHEDULER)
+				.observeOn(EXPORT_SCHEDULER)
 				.map(projectDescriptionJSONString -> {
 
 					LOG.debug("retrieved full project description for project '{}'", projectIdentifier);
 
-					try {
-
-						return MAPPER.readValue(projectDescriptionJSONString, ObjectNode.class);
-					} catch (final IOException e) {
-
-						final String message = String.format("something went wrong, while trying to transform full description of project %s", projectIdentifier);
-
-						LOG.error(message, e);
-
-						throw DswarmBackupperError.wrap(new DswarmBackupperException(message, e));
-					}
+					return getProjectJSON(projectIdentifier, projectDescriptionJSONString);
 				})
-				.map(projectDescriptionJSON -> {
+				.map(projectDescriptionJSON -> serializeProjectJSON(projectIdentifier, projectDescriptionJSON));
+	}
 
-					try {
+	private Observable<Tuple<String, String>> importProject(Tuple<String, String> projectDescriptionTuple) {
 
-						final String projectDescriptionJSONString = MAPPER.writeValueAsString(projectDescriptionJSON);
+		final String projectIdentifier = projectDescriptionTuple.v1();
+		final String projectDescriptionJSONString = projectDescriptionTuple.v2();
 
-						return Tuple.tuple(projectIdentifier, projectDescriptionJSONString);
-					} catch (final JsonProcessingException e) {
+		LOG.debug("trying to import full project description of project '{}'", projectIdentifier);
 
-						final String message = String.format("something went wrong, while trying to transform full description of project %s", projectIdentifier);
+		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(ROBUST_IMPORT_PROJECT_ENDPOINT);
 
-						LOG.error(message, e);
+		final RxObservableInvoker rx = rxWebTarget.request()
+				.accept(MediaType.APPLICATION_JSON_TYPE)
+				.rx();
 
-						throw DswarmBackupperError.wrap(new DswarmBackupperException(message, e));
-					}
-				});
+		return rx.post(Entity.entity(projectDescriptionJSONString, MediaType.APPLICATION_JSON), String.class)
+				.observeOn(IMPORT_SCHEDULER)
+				.map(responseProjectDescriptionJSONString -> {
+
+					LOG.debug("imported full project description for project '{}'", projectIdentifier);
+
+					return getProjectJSON(projectIdentifier, responseProjectDescriptionJSONString);
+				})
+				.map(projectDescriptionJSON -> serializeProjectJSON(projectIdentifier, projectDescriptionJSON));
+	}
+
+	private static ObjectNode getProjectJSON(final String projectIdentifier, final String projectDescriptionJSONString) {
+
+		final String errorMessage = String.format("something went wrong, while trying to transform full description of project %s", projectIdentifier);
+
+		return FileUtils.deserializeAsObjectNode(projectDescriptionJSONString, errorMessage);
+	}
+
+	private static Tuple<String, String> serializeProjectJSON(final String projectIdentifier, final ObjectNode projectDescriptionJSON) {
+
+		final String errorMessage = String.format("something went wrong, while trying to serialize full description of project %s", projectIdentifier);
+
+		final String projectDescriptionJSONString = FileUtils.serialize(projectDescriptionJSON, errorMessage);
+
+		return Tuple.tuple(projectIdentifier, projectDescriptionJSONString);
 	}
 
 	private static Client client() {

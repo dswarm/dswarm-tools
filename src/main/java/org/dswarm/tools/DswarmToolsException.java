@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dswarm.backupper;
+package org.dswarm.tools;
 
 /**
  * @author tgaengler
  */
-public class DswarmBackupperException extends Exception {
+public class DswarmToolsException extends Exception {
 
 	/**
 	 *
@@ -30,7 +30,7 @@ public class DswarmBackupperException extends Exception {
 	 *
 	 * @param exception the exception message
 	 */
-	public DswarmBackupperException(final String exception) {
+	public DswarmToolsException(final String exception) {
 
 		super(exception);
 	}
@@ -42,7 +42,7 @@ public class DswarmBackupperException extends Exception {
 	 * @param message the exception message
 	 * @param cause   a previously thrown exception, causing this one
 	 */
-	public DswarmBackupperException(final String message, final Throwable cause) {
+	public DswarmToolsException(final String message, final Throwable cause) {
 
 		super(message, cause);
 	}

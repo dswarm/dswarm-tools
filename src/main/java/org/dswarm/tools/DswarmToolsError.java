@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dswarm.backupper;
+package org.dswarm.tools;
 
 import rx.functions.Action0;
 import rx.functions.Func1;
@@ -21,21 +21,21 @@ import rx.functions.Func1;
 /**
  * @author tgaengler
  */
-public class DswarmBackupperError extends RuntimeException {
+public class DswarmToolsError extends RuntimeException {
 
-	public DswarmBackupperError(final Throwable cause) {
+	public DswarmToolsError(final Throwable cause) {
 		super(cause);
 	}
 
-	public static DswarmBackupperError wrap(final DswarmBackupperException exception) {
-		return new DswarmBackupperError(exception);
+	public static DswarmToolsError wrap(final DswarmToolsException exception) {
+		return new DswarmToolsError(exception);
 	}
 
 	public static Action0 wrapped(final PersistenceAction action) {
 		return () -> {
 			try {
 				action.run();
-			} catch (DswarmBackupperException e) {
+			} catch (DswarmToolsException e) {
 				throw wrap(e);
 			}
 		};
@@ -45,7 +45,7 @@ public class DswarmBackupperError extends RuntimeException {
 		return t -> {
 			try {
 				return func.apply(t);
-			} catch (DswarmBackupperException e) {
+			} catch (DswarmToolsException e) {
 				throw wrap(e);
 			}
 		};
@@ -54,12 +54,12 @@ public class DswarmBackupperError extends RuntimeException {
 	@FunctionalInterface
 	public interface PersistenceAction {
 
-		void run() throws DswarmBackupperException;
+		void run() throws DswarmToolsException;
 	}
 
 	@FunctionalInterface
 	public interface PersistenceFunction1<T, R> {
 
-		R apply(final T t) throws DswarmBackupperException;
+		R apply(final T t) throws DswarmToolsException;
 	}
 }
