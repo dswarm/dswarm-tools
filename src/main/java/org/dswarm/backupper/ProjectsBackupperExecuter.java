@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,9 +29,9 @@ import org.dswarm.common.types.Tuple;
 /**
  * @author tgaengler
  */
-public class Executer {
+public class ProjectsBackupperExecuter {
 
-	private static final Logger LOG = LoggerFactory.getLogger(Executer.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ProjectsBackupperExecuter.class);
 
 	private static final String DSWARM_BACKEND_API_BASE_URI_PARAMETER = "-dswarm-backend-api";
 	private static final String EXPORT_DIRECTORY_NAME_PARAMETER = "-export-directory-name";
@@ -46,8 +46,8 @@ public class Executer {
 	static {
 
 		HELP_SB.append("\n")
-				.append("this is the d:swarm backupper").append("\n\n")
-				.append("\t").append("this tool is intended for backupping Projects and the content of their (input) Data Models and replaying them on running d:swarm instances").append("\n\n")
+				.append("this is the d:swarm projects backupper").append("\n\n")
+				.append("\t").append("this tool is intended for backupping Projects on a running d:swarm instance (that can be replayed to this or another d:swarm instance)").append("\n\n")
 				.append("following parameters are available for configuration at the moment:").append("\n\n")
 				.append("\t").append(DSWARM_BACKEND_API_BASE_URI_PARAMETER).append(" : the d:swarm backend API base URI").append("\n")
 				.append("\t").append(EXPORT_DIRECTORY_NAME_PARAMETER).append(" : the name of the export directory (absolute path)").append("\n\n")

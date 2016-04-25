@@ -46,7 +46,7 @@ import rx.schedulers.Schedulers;
 import org.dswarm.common.types.Tuple;
 
 /**
- * Created by tgaengler on 20.04.16.
+ * @author tgaengler
  */
 public class DswarmBackendAPIClient {
 

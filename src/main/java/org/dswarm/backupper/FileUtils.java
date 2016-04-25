@@ -22,7 +22,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 
 /**
- * Created by tgaengler on 21.04.16.
+ * @author tgaengler
  */
 public final class FileUtils {
 

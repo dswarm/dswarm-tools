@@ -27,7 +27,7 @@ import rx.Scheduler;
 import rx.schedulers.Schedulers;
 
 /**
- * Created by tgaengler on 21.04.16.
+ * @author tgaengler
  */
 public final class ProjectExporter {
 
