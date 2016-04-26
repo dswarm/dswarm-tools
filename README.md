@@ -6,7 +6,10 @@
 
     mvn clean package
 
-## Projects Export
+
+## Projects Management
+
+### Projects Export
 
 execute projects export:
 
@@ -16,7 +19,7 @@ display help of projects export tool:
 
     java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.exporter.ProjectsExportExecuter --help
 
-## Projects Import
+### Projects Import
 
 execute projects import:
 
