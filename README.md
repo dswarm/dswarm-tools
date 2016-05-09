@@ -9,7 +9,9 @@
 
 ## Projects Management
 
-### Projects Export
+### Export
+
+#### Projects Export
 
 execute projects export:
 
@@ -19,7 +21,19 @@ display help of projects export tool:
 
     java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.exporter.ProjectsExportExecuter --help
 
-### Projects Import
+#### Data Models (Content) Export
+
+execute data models content export:
+
+    java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.exporter.DataModelsContentExportExecuter -dswarm-backend-api=[BASE_URI_OF_YOUR_DSWARM_BACKEND_API] -dswarm-graph-extension-api=[BASE_URI_OF_YOUR_DSWARM_GRAPH_EXTENSION_API] -export-directory-name=[DIRECTORY_WHERE_THE_EXPORTED_PROJECTS_SHOULD_BE_STORED]
+
+display help of data models content export tool:
+
+    java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.exporter.DataModelsContentExportExecuter --help
+
+### Import
+
+#### Projects Import
 
 execute projects import:
 
@@ -28,5 +42,9 @@ execute projects import:
 display help of projects import tool:
 
     java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.importer.ProjectsImportExecuter --help 
+
+#### Data Models (Content) Import
+
+TODO
 
 **note**: please don't forget ro replace the variable parts (i.e. that one in '[]') with concrete things
