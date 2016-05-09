@@ -35,9 +35,9 @@ import org.dswarm.tools.DswarmToolsStatics;
 /**
  * @author tgaengler
  */
-public final class FileUtils {
+public final class DswarmToolUtils {
 
-	private static final Logger LOG = LoggerFactory.getLogger(FileUtils.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DswarmToolUtils.class);
 
 	public static void writeToFile(final String content, final String directory, final String fileName) throws IOException {
 

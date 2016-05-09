@@ -38,6 +38,20 @@ public final class RxUtils {
 		
 		return getScheduler(dswarmObjectWriterThreadNamingPattern + "%d");
 	}
+
+	public static Scheduler getObjectImporterScheduler(final String name) {
+
+		final String dswarmObjectWriterThreadNamingPattern = String.format("dswarm-%s-importer-", name);
+
+		return getScheduler(dswarmObjectWriterThreadNamingPattern + "%d");
+	}
+
+	public static Scheduler getObjectExporterScheduler(final String name) {
+
+		final String dswarmObjectWriterThreadNamingPattern = String.format("dswarm-%s-exporter-", name);
+
+		return getScheduler(dswarmObjectWriterThreadNamingPattern + "%d");
+	}
 	
 	public static Scheduler getScheduler(final String name) {
 		

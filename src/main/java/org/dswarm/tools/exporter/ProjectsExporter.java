@@ -18,17 +18,16 @@ package org.dswarm.tools.exporter;
 import rx.Observable;
 
 import org.dswarm.common.types.Tuple;
+import org.dswarm.tools.DswarmToolsStatics;
 
 /**
  * @author tgaengler
  */
 public final class ProjectsExporter extends AbstractExporter {
 
-	private final static String OBJECT_NAME = "project";
-
 	public ProjectsExporter(String dswarmBackendAPIBaseURI) {
 
-		super(dswarmBackendAPIBaseURI, OBJECT_NAME);
+		super(dswarmBackendAPIBaseURI, DswarmToolsStatics.PROJECT);
 	}
 
 	@Override

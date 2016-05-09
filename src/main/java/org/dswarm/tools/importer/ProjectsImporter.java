@@ -31,10 +31,10 @@ import rx.Scheduler;
 import rx.schedulers.Schedulers;
 
 import org.dswarm.common.types.Tuple;
-import org.dswarm.tools.DswarmBackendAPIClient;
+import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
-import org.dswarm.tools.utils.FileUtils;
+import org.dswarm.tools.utils.DswarmToolUtils;
 
 /**
  * @author tgaengler
@@ -50,11 +50,11 @@ public final class ProjectsImporter {
 
 	private static final String UUID_IDENTIFIER = "uuid";
 
-	private final DswarmBackendAPIClient dswarmBackendAPIClient;
+	private final DswarmProjectsAPIClient dswarmBackendAPIClient;
 
 	public ProjectsImporter(final String dswarmBackendAPIBaseURI) {
 
-		dswarmBackendAPIClient = new DswarmBackendAPIClient(dswarmBackendAPIBaseURI);
+		dswarmBackendAPIClient = new DswarmProjectsAPIClient(dswarmBackendAPIBaseURI);
 	}
 
 	public Observable<Tuple<String, String>> importProjects(final String importDirectoryName) throws DswarmToolsException {
@@ -86,7 +86,7 @@ public final class ProjectsImporter {
 
 		try {
 
-			return Tuple.tuple(importDirectoryName + File.separator + importProjectFileName, FileUtils.readFromFile(importDirectoryName, importProjectFileName));
+			return Tuple.tuple(importDirectoryName + File.separator + importProjectFileName, DswarmToolUtils.readFromFile(importDirectoryName, importProjectFileName));
 		} catch (final IOException e) {
 
 			final String message = String.format("something went wrong, while trying to read file '%s' in folder '%s'", importProjectFileName, importDirectoryName);
@@ -104,7 +104,7 @@ public final class ProjectsImporter {
 
 		final String errorMessage = String.format("something went wrong, while trying to deserialize file '%s'", absoluteImportProjectFileName);
 
-		final ObjectNode importProjectJSON = FileUtils.deserializeAsObjectNode(importProjectJSONString, errorMessage);
+		final ObjectNode importProjectJSON = DswarmToolUtils.deserializeAsObjectNode(importProjectJSONString, errorMessage);
 
 		return Triple.of(absoluteImportProjectFileName, importProjectJSON, importProjectJSONString);
 	}

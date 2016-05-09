@@ -23,10 +23,10 @@ import rx.Observable;
 import rx.Scheduler;
 
 import org.dswarm.common.types.Tuple;
-import org.dswarm.tools.DswarmBackendAPIClient;
+import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
-import org.dswarm.tools.utils.FileUtils;
+import org.dswarm.tools.utils.DswarmToolUtils;
 import org.dswarm.tools.utils.RxUtils;
 
 /**
@@ -36,15 +36,15 @@ public abstract class AbstractExporter {
 
 	private static final Logger LOG = LoggerFactory.getLogger(AbstractExporter.class);
 
-	private final String objectName;
-	private final Scheduler scheduler;
+	protected final String objectName;
+	protected final Scheduler scheduler;
 
 
-	protected final DswarmBackendAPIClient dswarmBackendAPIClient;
+	protected final DswarmProjectsAPIClient dswarmBackendAPIClient;
 
 	public AbstractExporter(final String dswarmBackendAPIBaseURI, final String objectNameArg) {
 
-		dswarmBackendAPIClient = new DswarmBackendAPIClient(dswarmBackendAPIBaseURI);
+		dswarmBackendAPIClient = new DswarmProjectsAPIClient(dswarmBackendAPIBaseURI);
 		objectName = objectNameArg;
 		scheduler = RxUtils.getObjectWriterScheduler(objectName);
 	}
@@ -59,7 +59,7 @@ public abstract class AbstractExporter {
 
 	protected abstract Observable<Tuple<String, String>> fetchObjects();
 
-	private String writeExportObjectToFile(final String exportDirectoryName, final Tuple<String, String> objectDescription) {
+	protected String writeExportObjectToFile(final String exportDirectoryName, final Tuple<String, String> objectDescription) {
 
 		final String objectIdentifier = objectDescription.v1();
 		final String objectDescriptionJSONString = objectDescription.v2();
@@ -70,7 +70,7 @@ public abstract class AbstractExporter {
 
 		try {
 
-			FileUtils.writeToFile(objectDescriptionJSONString, exportDirectoryName, fileName);
+			DswarmToolUtils.writeToFile(objectDescriptionJSONString, exportDirectoryName, fileName);
 
 			LOG.debug("exported (wrote) full {} description for {} '{}' to file '{}/{}'", objectName, objectName, objectIdentifier, exportDirectoryName, fileName);
 

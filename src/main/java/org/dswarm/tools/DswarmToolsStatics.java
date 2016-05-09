@@ -31,6 +31,9 @@ public final class DswarmToolsStatics {
 
 	public static final String EQUALS = "=";
 
+	public static final String PROJECT = "project";
+	public static final String DATA_MODEL = "datamodel";
+
 	public static final ObjectMapper MAPPER = new ObjectMapper()
 			.setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
 			.setSerializationInclusion(JsonInclude.Include.NON_NULL)
