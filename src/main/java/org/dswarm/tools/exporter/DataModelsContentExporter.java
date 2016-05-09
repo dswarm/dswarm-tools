@@ -19,15 +19,16 @@ import rx.Observable;
 
 import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsStatics;
+import org.dswarm.tools.apiclients.DswarmGraphExtensionAPIClient;
 
 /**
  * @author tgaengler
  */
-public final class DataModelsExporter extends AbstractExporter {
+public final class DataModelsContentExporter extends AbstractExporter<DswarmGraphExtensionAPIClient> {
 
-	public DataModelsExporter(String dswarmBackendAPIBaseURI) {
+	public DataModelsContentExporter(final String dswarmGraphExtensionAPIBaseURI) {
 
-		super(dswarmBackendAPIBaseURI, DswarmToolsStatics.DATA_MODEL);
+		super(new DswarmGraphExtensionAPIClient(dswarmGraphExtensionAPIBaseURI), DswarmToolsStatics.DATA_MODEL);
 	}
 
 	public Observable<String> exportObjectsContent(final String exportDirectoryName, final Observable<Tuple<String, String>> requestInputObservable) {
@@ -47,9 +48,6 @@ public final class DataModelsExporter extends AbstractExporter {
 
 	private Observable<Tuple<String, String>> fetchObjectsContent(final Observable<Tuple<String, String>> dataModelRequestInputObservable) {
 
-		// TODO: data model identifiers and record class uri are required
-		/*
-		 */
-		return null;
+		return apiClient.fetchDataModelsContent(dataModelRequestInputObservable);
 	}
 }

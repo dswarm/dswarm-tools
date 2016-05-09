@@ -35,12 +35,12 @@ public final class DswarmProjectsAPIClient extends AbstractAPIClient {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DswarmProjectsAPIClient.class);
 
-	private static final String PROJECTS_IDENTIFIER = "/projects";
+	private final String PROJECTS_IDENTIFIER = String.format("%s%ss", SLASH, objectName);
 	private static final String FORMAT_IDENTIFIER = "format";
 	private static final String SHORT_FORMAT_IDENTIFIER = "short";
 	private static final String UUID_IDENTIFIER = "uuid";
 	private static final String ROBUST_IDENTIFIER = "robust";
-	private static final String ROBUST_IMPORT_PROJECT_ENDPOINT = PROJECTS_IDENTIFIER + SLASH + ROBUST_IDENTIFIER;
+	private final String ROBUST_IMPORT_PROJECT_ENDPOINT = String.format("%s%s%s", PROJECTS_IDENTIFIER, SLASH, ROBUST_IDENTIFIER);
 
 	public DswarmProjectsAPIClient(final String dswarmBackendAPIBaseURI) {
 
@@ -86,7 +86,9 @@ public final class DswarmProjectsAPIClient extends AbstractAPIClient {
 
 		LOG.debug("trying to retrieve full project description for project '{}'", projectIdentifier);
 
-		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(PROJECTS_IDENTIFIER + SLASH + projectIdentifier);
+		final String requestURI = String.format("%s%s%s", PROJECTS_IDENTIFIER, SLASH, projectIdentifier);
+
+		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(requestURI);
 
 		final RxObservableInvoker rx = rxWebTarget.request()
 				.accept(MediaType.APPLICATION_JSON_TYPE)

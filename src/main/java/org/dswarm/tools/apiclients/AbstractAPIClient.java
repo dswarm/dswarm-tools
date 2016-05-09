@@ -19,6 +19,7 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.rx.RxWebTarget;
@@ -73,14 +74,21 @@ public abstract class AbstractAPIClient {
 
 	protected ObjectNode getObjectJSON(final String objectIdentifier, final String objectJSONString) {
 
-		final String errorMessage = String.format("something went wrong, while trying to transform full %s %s", objectName, objectIdentifier);
+		final String errorMessage = String.format("something went wrong, while trying to transform %s %s", objectName, objectIdentifier);
 
 		return DswarmToolUtils.deserializeAsObjectNode(objectJSONString, errorMessage);
 	}
 
-	protected Tuple<String, String> serializeObjectJSON(final String objectIdentifier, final ObjectNode objectJSON) {
+	protected ArrayNode getObjectsJSON(final String objectIdentifier, final String objectJSONString) {
 
-		final String errorMessage = String.format("something went wrong, while trying to serialize full %s %s", objectName, objectIdentifier);
+		final String errorMessage = String.format("something went wrong, while trying to transform %s %s", objectName, objectIdentifier);
+
+		return DswarmToolUtils.deserializeAsArrayNode(objectJSONString, errorMessage);
+	}
+
+	protected Tuple<String, String> serializeObjectJSON(final String objectIdentifier, final Object objectJSON) {
+
+		final String errorMessage = String.format("something went wrong, while trying to serialize %s %s", objectName, objectIdentifier);
 
 		final String objectJSONString = DswarmToolUtils.serialize(objectJSON, errorMessage);
 

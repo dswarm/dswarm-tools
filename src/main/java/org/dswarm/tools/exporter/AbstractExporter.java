@@ -23,6 +23,7 @@ import rx.Observable;
 import rx.Scheduler;
 
 import org.dswarm.common.types.Tuple;
+import org.dswarm.tools.apiclients.AbstractAPIClient;
 import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
@@ -32,7 +33,7 @@ import org.dswarm.tools.utils.RxUtils;
 /**
  * @author tgaengler
  */
-public abstract class AbstractExporter {
+public abstract class AbstractExporter<APICLIENT> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(AbstractExporter.class);
 
@@ -40,11 +41,11 @@ public abstract class AbstractExporter {
 	protected final Scheduler scheduler;
 
 
-	protected final DswarmProjectsAPIClient dswarmBackendAPIClient;
+	protected final APICLIENT apiClient;
 
-	public AbstractExporter(final String dswarmBackendAPIBaseURI, final String objectNameArg) {
+	public AbstractExporter(final APICLIENT apiClientArg, final String objectNameArg) {
 
-		dswarmBackendAPIClient = new DswarmProjectsAPIClient(dswarmBackendAPIBaseURI);
+		apiClient = apiClientArg;
 		objectName = objectNameArg;
 		scheduler = RxUtils.getObjectWriterScheduler(objectName);
 	}

@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 public final class DswarmToolsStatics {
 
 	public static final String DSWARM_BACKEND_API_BASE_URI_PARAMETER = "-dswarm-backend-api";
+	public static final String DSWARM_GRAPH_EXTENSION_API_BASE_URI_PARAMETER = "-dswarm-graph-extension-api";
 	public static final String EXPORT_DIRECTORY_NAME_PARAMETER = "-export-directory-name";
 	public static final String IMPORT_DIRECTORY_NAME_PARAMETER = "-import-directory-name";
 	public static final String HELP_PARAMETER = "--help";

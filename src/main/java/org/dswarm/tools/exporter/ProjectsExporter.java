@@ -19,20 +19,21 @@ import rx.Observable;
 
 import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsStatics;
+import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 
 /**
  * @author tgaengler
  */
-public final class ProjectsExporter extends AbstractExporter {
+public final class ProjectsExporter extends AbstractExporter<DswarmProjectsAPIClient> {
 
-	public ProjectsExporter(String dswarmBackendAPIBaseURI) {
+	public ProjectsExporter(final String dswarmBackendAPIBaseURI) {
 
-		super(dswarmBackendAPIBaseURI, DswarmToolsStatics.PROJECT);
+		super(new DswarmProjectsAPIClient(dswarmBackendAPIBaseURI), DswarmToolsStatics.PROJECT);
 	}
 
 	@Override
 	protected Observable<Tuple<String, String>> fetchObjects() {
 
-		return dswarmBackendAPIClient.fetchProjects();
+		return apiClient.fetchProjects();
 	}
 }
