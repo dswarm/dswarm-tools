@@ -15,6 +15,8 @@
  */
 package org.dswarm.tools;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -97,7 +99,29 @@ public class DswarmBackendAPIClient {
 
 	public Observable<Tuple<String, String>> importProjects(final Observable<Tuple<String, String>> projectDescriptionTupleObservable) {
 
-		return projectDescriptionTupleObservable.flatMap(this::importProject);
+		// TODO: this is just a workaround to process the request serially (i.e. one after another) until the processing at the endpoint is fixed (i.e. also prepared for parallel requests)
+		final List<Tuple<String, String>> inputs = projectDescriptionTupleObservable.toList().toBlocking().firstOrDefault(null);
+
+		if (inputs == null) {
+
+			return Observable.empty();
+		}
+
+		final List<Tuple<String, String>> results = new ArrayList<>();
+
+		for (final Tuple<String, String> projectDescriptionTuple : inputs) {
+
+			final Tuple<String, String> result = this.importProject(projectDescriptionTuple).toBlocking().firstOrDefault(null);
+
+			if (result == null) {
+
+				continue;
+			}
+
+			results.add(result);
+		}
+
+		return Observable.from(results);
 	}
 
 	private Observable<String> retrieveAllProjectIds() {
