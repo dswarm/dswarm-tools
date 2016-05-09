@@ -39,9 +39,9 @@ import org.dswarm.tools.utils.FileUtils;
 /**
  * @author tgaengler
  */
-public final class ProjectImporter {
+public final class ProjectsImporter {
 
-	private static final Logger LOG = LoggerFactory.getLogger(ProjectImporter.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ProjectsImporter.class);
 
 	private static final String DSWARM_PROJECT_READER_THREAD_NAMING_PATTERN = "dswarm-project-reader-%d";
 	private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool(
@@ -52,7 +52,7 @@ public final class ProjectImporter {
 
 	private final DswarmBackendAPIClient dswarmBackendAPIClient;
 
-	public ProjectImporter(final String dswarmBackendAPIBaseURI) {
+	public ProjectsImporter(final String dswarmBackendAPIBaseURI) {
 
 		dswarmBackendAPIClient = new DswarmBackendAPIClient(dswarmBackendAPIBaseURI);
 	}
@@ -76,8 +76,8 @@ public final class ProjectImporter {
 		final Observable<Tuple<String, String>> importProjectDescriptionTupleObservable = Observable.from(importProjectFileNames)
 				.observeOn(SCHEDULER)
 				.map(importProjectFileName -> readProjectFile(importDirectoryName, importProjectFileName))
-				.map(ProjectImporter::deserializeProjectFile)
-				.map(ProjectImporter::extractProjectIdentifier);
+				.map(ProjectsImporter::deserializeProjectFile)
+				.map(ProjectsImporter::extractProjectIdentifier);
 
 		return dswarmBackendAPIClient.importProjects(importProjectDescriptionTupleObservable);
 	}

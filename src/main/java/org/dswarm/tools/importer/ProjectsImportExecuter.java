@@ -54,9 +54,9 @@ public class ProjectsImportExecuter extends AbstractExecuter {
 
 	private static void executeImport(final String dswarmBackendAPIBaseURI, final String importDirectoryName) throws DswarmToolsException {
 
-		final ProjectImporter projectImporter = new ProjectImporter(dswarmBackendAPIBaseURI);
+		final ProjectsImporter projectsImporter = new ProjectsImporter(dswarmBackendAPIBaseURI);
 
-		final Observable<Tuple<String, String>> projectDescriptionTupleObservable = projectImporter.importProjects(importDirectoryName);
+		final Observable<Tuple<String, String>> projectDescriptionTupleObservable = projectsImporter.importProjects(importDirectoryName);
 
 		final AtomicInteger counter = new AtomicInteger(0);
 

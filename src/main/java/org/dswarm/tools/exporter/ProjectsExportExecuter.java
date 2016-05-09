@@ -56,9 +56,9 @@ public class ProjectsExportExecuter extends AbstractExecuter {
 
 	private static void executeExport(final String dswarmBackendAPIBaseURI, final String exportDirectoryName) {
 
-		final ProjectExporter projectExporter = new ProjectExporter(dswarmBackendAPIBaseURI);
+		final ProjectsExporter projectsExporter = new ProjectsExporter(dswarmBackendAPIBaseURI);
 
-		final Observable<String> projectDescriptionJSONStringObservable = projectExporter.exportProjects(exportDirectoryName);
+		final Observable<String> projectDescriptionJSONStringObservable = projectsExporter.exportObjects(exportDirectoryName);
 
 		final AtomicInteger counter = new AtomicInteger(0);
 
