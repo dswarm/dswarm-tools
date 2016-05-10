@@ -40,7 +40,7 @@ public final class ProjectsImporter extends AbstractImporter<DswarmProjectsAPICl
 	@Override
 	protected Observable<Tuple<String, String>> executeImport(final Observable<Tuple<String, String>> importObjectTupleObservable) {
 
-		return apiClient.importProjects(importObjectTupleObservable);
+		return apiClient.importObjects(importObjectTupleObservable);
 	}
 
 	@Override

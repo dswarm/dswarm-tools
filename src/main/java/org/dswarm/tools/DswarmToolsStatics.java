@@ -41,6 +41,11 @@ public final class DswarmToolsStatics {
 	public static final String RECORD_CLASS_IDENTIFIER = "record_class";
 	public static final String URI_IDENTIFIER = "uri";
 
+	public static final String DATA_MODEL_URI_IDENTIFIER = "data_model_uri";
+	public static final String RECORD_CLASS_URI_IDENTIFIER = "record_class_uri";
+
+	public static final String DATA_MODEL_URI_TEMPLATE = "http://data.slub-dresden.de/datamodel/%s/data";
+
 	public static final ObjectMapper MAPPER = new ObjectMapper()
 			.setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
 			.setSerializationInclusion(JsonInclude.Include.NON_NULL)

@@ -15,20 +15,39 @@
  */
 package org.dswarm.tools.apiclients;
 
+import java.io.BufferedInputStream;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.nio.charset.Charset;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.net.HttpHeaders;
 import com.google.common.util.concurrent.Futures;
+import org.apache.commons.io.Charsets;
+import org.apache.commons.lang3.tuple.Triple;
 import org.glassfish.jersey.client.rx.RxWebTarget;
 import org.glassfish.jersey.client.rx.rxjava.RxObservableInvoker;
+import org.glassfish.jersey.media.multipart.MultiPart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.Scheduler;
+import rx.subjects.PublishSubject;
 
 import org.dswarm.common.types.Tuple;
+import org.dswarm.tools.DswarmToolsError;
+import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.utils.DswarmToolUtils;
+import org.dswarm.tools.utils.RxUtils;
 
 /**
  * @author tgaengler
@@ -37,16 +56,26 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DswarmGraphExtensionAPIClient.class);
 
-	private static final String DATA_MODEL_URI_TEMPLATE = "http://data.slub-dresden.de/datamodel/%s/data";
-	private static final String DATA_MODEL_URI_IDENTIFIER = "data_model_uri";
-	private static final String RECORD_CLASS_URI_IDENTIFIER = "record_class_uri";
 	private static final String GDM_ENDPOINT_IDENTIFIER = "gdm";
 	private static final String GET_ENDPOINT_IDENTIFIER = "get";
+	private static final String PUT_ENDPOINT_IDENTIFIER = "put";
 	private static final String READ_DATA_MODEL_CONTENT_ENDPOINT = String.format("%s%s%s", GDM_ENDPOINT_IDENTIFIER, SLASH, GET_ENDPOINT_IDENTIFIER);
+	private static final String WRITE_DATA_MODEL_CONTENT_ENDPOINT = String.format("%s%s%s", GDM_ENDPOINT_IDENTIFIER, SLASH, PUT_ENDPOINT_IDENTIFIER);
+	private static final String EXPORT_TYPE = "exported";
+	private static final String IMPORT_TYPE = "imported";
+
+	private static final String MULTIPART_MIXED = "multipart/mixed";
+	public static final String CHUNKED_TRANSFER_ENCODING = "chunked";
+
+	private static final String WRITE_GDM = "write to graph database";
+
+	private final ExecutorService importExecutorService;
 
 	public DswarmGraphExtensionAPIClient(final String dswarmGraphExtensionAPIBaseURI) {
 
 		super(dswarmGraphExtensionAPIBaseURI, DswarmToolsStatics.DATA_MODEL);
+
+		importExecutorService = RxUtils.getObjectImporterExecutorService(objectName);
 	}
 
 	public Observable<Tuple<String, String>> fetchDataModelsContent(final Observable<Tuple<String, String>> dataModelRequestInputObservable) {
@@ -56,17 +85,31 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 						.flatMap(this::retrieveDataModelContent));
 	}
 
+	public Observable<Tuple<String, String>> importDataModelsContent(final Observable<Triple<String, String, String>> dataModelWriteRequestTripleObservable) {
+
+		return dataModelWriteRequestTripleObservable.flatMap(dataModelWriteRequestTriple -> {
+
+			try {
+
+				return importDataModelContent(dataModelWriteRequestTriple);
+			} catch (final DswarmToolsException e) {
+
+				throw DswarmToolsError.wrap(e);
+			}
+		});
+	}
+
 	private static Observable<Tuple<String, String>> generateReadDataModelRequest(final Tuple<String, String> dataModelRequestInputTuple) {
 
 		final String dataModelId = dataModelRequestInputTuple.v1();
 		final String recordClassURI = dataModelRequestInputTuple.v2();
 
-		final String dataModelURI = String.format(DATA_MODEL_URI_TEMPLATE, dataModelId);
+		final String dataModelURI = String.format(DswarmToolsStatics.DATA_MODEL_URI_TEMPLATE, dataModelId);
 
 		final ObjectNode requestJSON = DswarmToolsStatics.MAPPER.createObjectNode();
 
-		requestJSON.put(DATA_MODEL_URI_IDENTIFIER, dataModelURI)
-				.put(RECORD_CLASS_URI_IDENTIFIER, recordClassURI);
+		requestJSON.put(DswarmToolsStatics.DATA_MODEL_URI_IDENTIFIER, dataModelURI)
+				.put(DswarmToolsStatics.RECORD_CLASS_URI_IDENTIFIER, recordClassURI);
 
 		return Observable.from(Futures.immediateFuture(DswarmToolUtils.serialize(requestJSON, "something went wrong while serializing the request JSON for the read-data-model-content-request")))
 				.map(requestJSONString -> Tuple.tuple(dataModelId, requestJSONString));
@@ -74,23 +117,127 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 
 	private Observable<Tuple<String, String>> retrieveDataModelContent(final Tuple<String, String> readDataModelContentRequestTuple) {
 
-		final String dataModelId = readDataModelContentRequestTuple.v1();
-		final String readDataModelContentRequestJSONString = readDataModelContentRequestTuple.v2();
+		return executePOSTRequest(readDataModelContentRequestTuple, READ_DATA_MODEL_CONTENT_ENDPOINT, EXPORT_TYPE, exportScheduler);
+	}
 
-		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(READ_DATA_MODEL_CONTENT_ENDPOINT);
+	private Observable<Tuple<String, String>> importDataModelContent(final Triple<String, String, String> writeDataModelContentRequestTriple) throws DswarmToolsException {
+
+		final String dataModelId = writeDataModelContentRequestTriple.getLeft();
+		final String writeDataModelContentRequestJSONString = writeDataModelContentRequestTriple.getMiddle();
+		final String dataModelContentJSONString = writeDataModelContentRequestTriple.getRight();
+
+		System.out.println(writeDataModelContentRequestJSONString);
+
+		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(WRITE_DATA_MODEL_CONTENT_ENDPOINT);
+
+		final RxObservableInvoker rx = rxWebTarget.request(MULTIPART_MIXED).header(HttpHeaders.TRANSFER_ENCODING, CHUNKED_TRANSFER_ENCODING).rx();
+
+		final PipedInputStream input = new PipedInputStream();
+		final PipedOutputStream output = new PipedOutputStream();
+
+		try {
+
+			importExecutorService.submit(() -> {
+
+				try {
+
+					output.connect(input);
+
+					getBytes(output, dataModelContentJSONString); // turns a Runnable into a Callable which handles exceptions
+				} catch (final IOException e) {
+
+					e.printStackTrace();
+				}
+			}).get();
+
+			final MultiPart multiPart = new MultiPart();
+			final BufferedInputStream entity1 = new BufferedInputStream(input, CHUNK_SIZE);
+
+			multiPart
+					.bodyPart(writeDataModelContentRequestJSONString, MediaType.APPLICATION_JSON_TYPE)
+					.bodyPart(entity1, MediaType.APPLICATION_OCTET_STREAM_TYPE);
+
+			// POST the request
+			final Entity<MultiPart> entity = Entity.entity(multiPart, MULTIPART_MIXED);
+
+			final Observable<Response> post = rx.post(entity).observeOn(importScheduler);
+
+			final PublishSubject<Response> asyncPost = PublishSubject.create();
+			asyncPost.subscribe(response -> {
+
+				try {
+
+					closeResource(multiPart, WRITE_GDM);
+					closeResource(output, WRITE_GDM);
+					closeResource(input, WRITE_GDM);
+
+					//TODO maybe check status code here, i.e., should be 200
+
+					LOG.debug("wrote GDM data for data model '{}' into data hub", dataModelId);
+				} catch (final DswarmToolsException e) {
+
+					throw DswarmToolsError.wrap(e);
+				}
+			}, throwable -> {
+
+				throw DswarmToolsError.wrap(new DswarmToolsException(
+						String.format("Couldn't store GDM data into database. Received status code '%s' from database endpoint.",
+								throwable.getMessage())));
+			}, () -> LOG.debug("completely wrote GDM data for data model '{}' into data hub", dataModelId));
+
+			post.subscribe(asyncPost);
+
+			return asyncPost.map(response -> {
+
+				int status = response.getStatus();
+
+				return Tuple.tuple(dataModelId, String.valueOf(status));
+			});
+		} catch (final InterruptedException | ExecutionException e) {
+
+			throw new DswarmToolsException("couldn't store GDM data into database successfully", e);
+		}
+	}
+
+	private Observable<Tuple<String, String>> executePOSTRequest(final Tuple<String, String> requestTuple,
+	                                                             final String requestURI, final String type, final Scheduler scheduler) {
+
+		final String dataModelId = requestTuple.v1();
+		final String requestJSONString = requestTuple.v2();
+
+		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(requestURI);
 
 		final RxObservableInvoker rx = rxWebTarget.request()
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.post(Entity.entity(readDataModelContentRequestJSONString, MediaType.APPLICATION_JSON), String.class)
-				.observeOn(exportScheduler)
+		return rx.post(Entity.entity(requestJSONString, MediaType.APPLICATION_JSON), String.class)
+				.observeOn(scheduler)
 				.map(dataModelGDMJSONString -> {
 
-					LOG.debug("exported content of data model '{}'", dataModelId);
+					LOG.debug("{} content of data model '{}'", type, dataModelId);
 
 					return getObjectsJSON(dataModelId, dataModelGDMJSONString);
 				})
 				.map(dataModelContentJSON -> serializeObjectJSON(dataModelId, dataModelContentJSON));
+	}
+
+	private void getBytes(final PipedOutputStream output, final String string) throws IOException {
+
+		output.write(string.getBytes(Charsets.UTF_8));
+	}
+
+	private static void closeResource(final Closeable closeable, final String type) throws DswarmToolsException {
+
+		if (closeable != null) {
+
+			try {
+
+				closeable.close();
+			} catch (final IOException e) {
+
+				throw new DswarmToolsException(String.format("couldn't finish %s processing", type), e);
+			}
+		}
 	}
 }

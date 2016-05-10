@@ -65,7 +65,7 @@ public class DataModelsContentExportExecuter extends AbstractExecuter {
 		final DataModelsContentExporter dataModelsContentExporter = new DataModelsContentExporter(dswarmGraphExtensionAPIBaseURI);
 
 		// fetch input data model identifiers + record class URIs of input schemata
-		final Observable<Tuple<String, String>> readDataModelRequestInputTupleObservable = dswarmProjectsAPIClient.fetchProjects()
+		final Observable<Tuple<String, String>> readDataModelRequestInputTupleObservable = dswarmProjectsAPIClient.fetchObjects()
 				.map(projectTuple -> {
 
 					final String projectIdentifier = projectTuple.v1();
@@ -81,11 +81,7 @@ public class DataModelsContentExportExecuter extends AbstractExecuter {
 
 					final String inputDataModelID = inputDataModel.get(DswarmToolsStatics.UUID_IDENTIFIER).asText();
 
-					final JsonNode inputSchema = inputDataModel.get(DswarmToolsStatics.SCHEMA_IDENTIFIER);
-
-					final JsonNode inputSchemaRecordClass = inputSchema.get(DswarmToolsStatics.RECORD_CLASS_IDENTIFIER);
-
-					final String inputSchemaRecordClassURI = inputSchemaRecordClass.get(DswarmToolsStatics.URI_IDENTIFIER).asText();
+					final String inputSchemaRecordClassURI = DswarmToolUtils.getRecordClassURI(inputDataModel);
 
 					return Tuple.tuple(inputDataModelID, inputSchemaRecordClassURI);
 				})

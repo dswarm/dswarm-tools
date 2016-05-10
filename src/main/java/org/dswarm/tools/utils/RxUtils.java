@@ -28,48 +28,65 @@ import rx.schedulers.Schedulers;
  * @author tgaengler
  */
 public final class RxUtils {
-	
+
+	private static final Map<String, ExecutorService> executorServices = new HashMap<>();
 	private static final Map<String, Scheduler> schedulers = new HashMap<>();
-	
-	
+
+	private static final String WRITER_PATTERN = "dswarm-%s-writer-";
+	private static final String READER_PATTERN = "dswarm-%s-reader-";
+	private static final String IMPORTER_PATTERN = "dswarm-%s-importer-";
+	private static final String EXPORTER_PATTERN = "dswarm-%s-exporter-";
+
+	private static final String PATTERN_POSTFIX = "%d";
+
 	public static Scheduler getObjectWriterScheduler(final String name) {
 
-		final String dswarmObjectWriterThreadNamingPattern = String.format("dswarm-%s-writer-", name);
+		final String dswarmObjectWriterThreadNamingPattern = String.format(WRITER_PATTERN, name);
 		
-		return getScheduler(dswarmObjectWriterThreadNamingPattern + "%d");
+		return getOrCreateScheduler(dswarmObjectWriterThreadNamingPattern + PATTERN_POSTFIX);
 	}
 
 	public static Scheduler getObjectReaderScheduler(final String name) {
 
-		final String dswarmObjectWriterThreadNamingPattern = String.format("dswarm-%s-reader-", name);
+		final String dswarmObjectWriterThreadNamingPattern = String.format(READER_PATTERN, name);
 
-		return getScheduler(dswarmObjectWriterThreadNamingPattern + "%d");
+		return getOrCreateScheduler(dswarmObjectWriterThreadNamingPattern + PATTERN_POSTFIX);
 	}
 
 	public static Scheduler getObjectImporterScheduler(final String name) {
 
-		final String dswarmObjectWriterThreadNamingPattern = String.format("dswarm-%s-importer-", name);
+		final String dswarmObjectWriterThreadNamingPattern = String.format(IMPORTER_PATTERN, name);
 
-		return getScheduler(dswarmObjectWriterThreadNamingPattern + "%d");
+		return getOrCreateScheduler(dswarmObjectWriterThreadNamingPattern + PATTERN_POSTFIX);
 	}
 
 	public static Scheduler getObjectExporterScheduler(final String name) {
 
-		final String dswarmObjectWriterThreadNamingPattern = String.format("dswarm-%s-exporter-", name);
+		final String dswarmObjectWriterThreadNamingPattern = String.format(EXPORTER_PATTERN, name);
 
-		return getScheduler(dswarmObjectWriterThreadNamingPattern + "%d");
+		return getOrCreateScheduler(dswarmObjectWriterThreadNamingPattern + PATTERN_POSTFIX);
+	}
+
+	public static ExecutorService getObjectImporterExecutorService(final String name) {
+
+		final String dswarmObjectWriterThreadNamingPattern = String.format(IMPORTER_PATTERN, name);
+
+		return createOrGetExecutorService(dswarmObjectWriterThreadNamingPattern + PATTERN_POSTFIX);
 	}
 	
-	public static Scheduler getScheduler(final String name) {
+	public static Scheduler getOrCreateScheduler(final String name) {
 		
 		return schedulers.computeIfAbsent(name, name1 -> {
 
-			final ExecutorService executorService = Executors.newCachedThreadPool(
-					new BasicThreadFactory.Builder().daemon(false).namingPattern(name1).build());
-			
+			final ExecutorService executorService = createOrGetExecutorService(name1);
+
 			return Schedulers.from(executorService);
 		});
-		
-		
+	}
+
+	private static ExecutorService createOrGetExecutorService(final String name) {
+
+		return executorServices.computeIfAbsent(name, name1 -> Executors.newCachedThreadPool(
+						new BasicThreadFactory.Builder().daemon(false).namingPattern(name1).build()));
 	}
 }

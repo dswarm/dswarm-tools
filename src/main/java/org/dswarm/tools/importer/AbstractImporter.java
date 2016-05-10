@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.IOException;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +54,25 @@ public abstract class AbstractImporter<APICLIENT> {
 
 	public Observable<Tuple<String, String>> importObjects(final String importDirectoryName) throws DswarmToolsException {
 
+		final Observable<Tuple<String, String>> importObjectTupleObservable = prepareImport(importDirectoryName);
+
+		return executeImport(importObjectTupleObservable);
+	}
+
+	protected Observable<Tuple<String, String>> prepareImport(final String importDirectoryName) throws DswarmToolsException {
+
+		final String[] importObjectFileNames = readFileNames(importDirectoryName);
+
+		// read objects from files and prepare content
+		return Observable.from(importObjectFileNames)
+				.observeOn(scheduler)
+				.map(importObjectFileName -> readObjectFile(importDirectoryName, importObjectFileName))
+				.map(this::deserializeObjectFile)
+				.map(this::extractObjectIdentifier);
+	}
+
+	protected String[] readFileNames(final String importDirectoryName) throws DswarmToolsException {
+
 		final File importDirectory = new File(importDirectoryName);
 
 		if (!importDirectory.isDirectory()) {
@@ -66,19 +84,12 @@ public abstract class AbstractImporter<APICLIENT> {
 			throw new DswarmToolsException(message);
 		}
 
-		final String[] importObjectFileNames = importDirectory.list();
-
-		// read projects descriptions from files and prepare content
-		final Observable<Tuple<String, String>> importObjectTupleObservable = Observable.from(importObjectFileNames)
-				.observeOn(scheduler)
-				.map(importObjectFileName -> readObjectFile(importDirectoryName, importObjectFileName))
-				.map(this::deserializeObjectFile)
-				.map(this::extractObjectIdentifier);
-
-		return executeImport(importObjectTupleObservable);
+		return importDirectory.list();
 	}
 
 	protected abstract Observable<Tuple<String, String>> executeImport(final Observable<Tuple<String, String>> importObjectTupleObservable);
+
+	protected abstract JsonNode deserializeObject(final String importObjectJSONString, final String errorMessage);
 
 	private static Tuple<String, String> readObjectFile(final String importDirectoryName, final String importObjectFileName) {
 
@@ -107,9 +118,7 @@ public abstract class AbstractImporter<APICLIENT> {
 		return Triple.of(absoluteImportObjectFileName, importObjectJSON, importObjectJSONString);
 	}
 
-	protected abstract JsonNode deserializeObject(final String importObjectJSONString, final String errorMessage);
-
-	private Tuple<String, String> extractObjectIdentifier(final Triple<String, JsonNode, String> importObjectTriple) {
+	protected Tuple<String, String> extractObjectIdentifier(final Triple<String, JsonNode, String> importObjectTriple) {
 
 		final String absoluteImportObjectFileName = importObjectTriple.getLeft();
 		final JsonNode importObjectJSON = importObjectTriple.getMiddle();

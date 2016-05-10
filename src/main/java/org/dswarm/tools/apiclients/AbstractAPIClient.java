@@ -44,7 +44,7 @@ public abstract class AbstractAPIClient {
 
 	private static final String CHUNKED = "CHUNKED";
 
-	private static final int CHUNK_SIZE = 1024;
+	protected static final int CHUNK_SIZE = 1024;
 	private static final int REQUEST_TIMEOUT = 20000000;
 
 	private static final ClientBuilder BUILDER = ClientBuilder.newBuilder().register(MultiPartFeature.class)

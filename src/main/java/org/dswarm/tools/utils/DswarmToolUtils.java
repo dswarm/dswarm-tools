@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Charsets;
@@ -90,6 +91,15 @@ public final class DswarmToolUtils {
 
 			throw DswarmToolsError.wrap(new DswarmToolsException(errorMessage, e));
 		}
+	}
+
+	public static String getRecordClassURI(final JsonNode dataModelJSON) {
+
+		final JsonNode schema = dataModelJSON.get(DswarmToolsStatics.SCHEMA_IDENTIFIER);
+
+		final JsonNode schemaRecordClass = schema.get(DswarmToolsStatics.RECORD_CLASS_IDENTIFIER);
+
+		return schemaRecordClass.get(DswarmToolsStatics.URI_IDENTIFIER).asText();
 	}
 
 	private static void checkDirExistenceOrCreateMissingParts(final String dirPath) {

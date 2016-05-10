@@ -13,27 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.dswarm.tools.exporter;
+package org.dswarm.tools.apiclients;
 
-import rx.Observable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsStatics;
-import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 
 /**
  * @author tgaengler
  */
-public final class ProjectsExporter extends AbstractExporter<DswarmProjectsAPIClient> {
+public final class DswarmDataModelsAPIClient extends AbstractDswarmBackendAPIClient {
 
-	public ProjectsExporter(final String dswarmBackendAPIBaseURI) {
+	private static final Logger LOG = LoggerFactory.getLogger(DswarmDataModelsAPIClient.class);
 
-		super(new DswarmProjectsAPIClient(dswarmBackendAPIBaseURI), DswarmToolsStatics.PROJECT);
-	}
+	public DswarmDataModelsAPIClient(final String dswarmBackendAPIBaseURI) {
 
-	@Override
-	protected Observable<Tuple<String, String>> fetchObjects() {
-
-		return apiClient.fetchObjects();
+		super(dswarmBackendAPIBaseURI, DswarmToolsStatics.DATA_MODEL);
 	}
 }
