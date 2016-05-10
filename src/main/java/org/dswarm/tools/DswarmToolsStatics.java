@@ -35,6 +35,12 @@ public final class DswarmToolsStatics {
 	public static final String PROJECT = "project";
 	public static final String DATA_MODEL = "datamodel";
 
+	public static final String INPUT_DATA_MODEL_IDENTIFIER = "input_data_model";
+	public static final String UUID_IDENTIFIER = "uuid";
+	public static final String SCHEMA_IDENTIFIER = "schema";
+	public static final String RECORD_CLASS_IDENTIFIER = "record_class";
+	public static final String URI_IDENTIFIER = "uri";
+
 	public static final ObjectMapper MAPPER = new ObjectMapper()
 			.setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
 			.setSerializationInclusion(JsonInclude.Include.NON_NULL)

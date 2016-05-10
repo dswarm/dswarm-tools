@@ -30,7 +30,7 @@ import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 import org.dswarm.tools.utils.DswarmToolUtils;
 
 /**
- * To be able to execute the Projects backup via commandline.
+ * To be able to execute the Data Models content backup via commandline.
  *
  * (incl. printable help)
  *
@@ -66,22 +66,30 @@ public class DataModelsContentExportExecuter extends AbstractExecuter {
 
 		// fetch input data model identifiers + record class URIs of input schemata
 		final Observable<Tuple<String, String>> readDataModelRequestInputTupleObservable = dswarmProjectsAPIClient.fetchProjects()
-				.map(Tuple::v2)
-				.map(projectJSONString -> DswarmToolUtils.deserializeAsObjectNode(projectJSONString, "something went wrong, while deserializing the project"))
+				.map(projectTuple -> {
+
+					final String projectIdentifier = projectTuple.v1();
+					final String projectJSONString = projectTuple.v2();
+
+					final String errorMessage = String.format("something went wrong, while deserializing project '%s'", projectIdentifier);
+
+					return DswarmToolUtils.deserializeAsObjectNode(projectJSONString, errorMessage);
+				})
 				.map(projectJSON -> {
 
-					final JsonNode inputDataModel = projectJSON.get("input_data_model");
+					final JsonNode inputDataModel = projectJSON.get(DswarmToolsStatics.INPUT_DATA_MODEL_IDENTIFIER);
 
-					final String inputDataModelID = inputDataModel.get("uuid").asText();
+					final String inputDataModelID = inputDataModel.get(DswarmToolsStatics.UUID_IDENTIFIER).asText();
 
-					final JsonNode inputSchema = inputDataModel.get("schema");
+					final JsonNode inputSchema = inputDataModel.get(DswarmToolsStatics.SCHEMA_IDENTIFIER);
 
-					final JsonNode inputSchemaRecordClass = inputSchema.get("record_class");
+					final JsonNode inputSchemaRecordClass = inputSchema.get(DswarmToolsStatics.RECORD_CLASS_IDENTIFIER);
 
-					final String inputSchemaRecordClassURI = inputSchemaRecordClass.get("uri").asText();
+					final String inputSchemaRecordClassURI = inputSchemaRecordClass.get(DswarmToolsStatics.URI_IDENTIFIER).asText();
 
 					return Tuple.tuple(inputDataModelID, inputSchemaRecordClassURI);
-				});
+				})
+				.distinct();
 
 		final Observable<String> dataModelContentJSONStringObservable = dataModelsContentExporter.exportObjectsContent(exportDirectoryName, readDataModelRequestInputTupleObservable);
 
