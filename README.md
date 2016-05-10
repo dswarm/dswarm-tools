@@ -7,7 +7,7 @@
     mvn clean package
 
 
-## Projects Management
+## (Meta) Data Management
 
 ### Export
 

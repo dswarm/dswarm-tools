@@ -23,8 +23,6 @@ import rx.Observable;
 import rx.Scheduler;
 
 import org.dswarm.common.types.Tuple;
-import org.dswarm.tools.apiclients.AbstractAPIClient;
-import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.utils.DswarmToolUtils;
