@@ -25,7 +25,7 @@ display help of projects export tool:
 
 execute data models content export:
 
-    java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.exporter.DataModelsContentExportExecuter -dswarm-backend-api=[BASE_URI_OF_YOUR_DSWARM_BACKEND_API] -dswarm-graph-extension-api=[BASE_URI_OF_YOUR_DSWARM_GRAPH_EXTENSION_API] -export-directory-name=[DIRECTORY_WHERE_THE_EXPORTED_PROJECTS_SHOULD_BE_STORED]
+    java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.exporter.DataModelsContentExportExecuter -dswarm-backend-api=[BASE_URI_OF_YOUR_DSWARM_BACKEND_API] -dswarm-graph-extension-api=[BASE_URI_OF_YOUR_DSWARM_GRAPH_EXTENSION_API] -export-directory-name=[DIRECTORY_WHERE_THE_EXPORTED_DATA_MODELS_CONTENT_SHOULD_BE_STORED]
 
 display help of data models content export tool:
 
@@ -45,6 +45,13 @@ display help of projects import tool:
 
 #### Data Models (Content) Import
 
-TODO
+execute data models content import:
 
-**note**: please don't forget ro replace the variable parts (i.e. that one in '[]') with concrete things
+    java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.importer.DataModelsContentImportExecuter -dswarm-backend-api=[BASE_URI_OF_YOUR_DSWARM_BACKEND_API] -dswarm-graph-extension-api=[BASE_URI_OF_YOUR_DSWARM_GRAPH_EXTENSION_API] -import-directory-name=[DIRECTORY_WHERE_THE_DATA_MODELS_CONTENT_THAT_SHOULD_BE_IMPORTED_IS_STORED]
+
+display help of data models content import tool:
+
+    java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.importer.DataModelsContentImportExecuter --help 
+
+
+**note**: please don't forget to replace the variable parts (i.e. that one in '[]') with concrete things
