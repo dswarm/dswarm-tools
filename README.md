@@ -53,5 +53,6 @@ display help of data models content import tool:
 
     java -cp dswarm-tools-0.0.1-SNAPSHOT-jar-with-dependencies.jar org.dswarm.tools.importer.DataModelsContentImportExecuter --help 
 
+The data models content import requires the metadata of the data models (i.e. the data model description) upfront in the instance, where the data models content should be imported (since this task makes use of this information). You can get this metadata into your d:swarm instance via projects import, i.e., first execute projects import and then data models (content) import.
 
 **note**: please don't forget to replace the variable parts (i.e. that one in '[]') with concrete things
