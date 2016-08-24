@@ -34,18 +34,18 @@
 		<java.target.version>1.8</java.target.version>
 		<maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
 		<maven-assembly-plugin.version>2.6</maven-assembly-plugin.version>
-		<maven-resources-plugin.version>2.7</maven-resources-plugin.version>
+		<maven-resources-plugin.version>3.0.1</maven-resources-plugin.version>
 		<maven-install-plugin.version>2.5.2</maven-install-plugin.version>
 		<maven-surefire-plugin.version>2.19.1</maven-surefire-plugin.version>
 		<maven-clean-plugin.version>3.0.0</maven-clean-plugin.version>
 		<maven-release-plugin.version>2.5.3</maven-release-plugin.version>
-		<maven-version-plugin.version>2.2</maven-version-plugin.version>
-		<version.maven.plugin.license>2.11</version.maven.plugin.license>
-		<version.jersey-client>2.22.2</version.jersey-client>
+		<maven-version-plugin.version>2.3</maven-version-plugin.version>
+		<version.maven.plugin.license>3.0</version.maven.plugin.license>
+		<version.jersey-client>2.23.2</version.jersey-client>
 		<guava.version>19.0</guava.version>
 		<jackson.version>2.7.3</jackson.version>
 		<version.apache.commons>3.4</version.apache.commons>
-		<version.commons-io>2.4</version.commons-io>
+		<version.commons-io>2.5</version.commons-io>
 		<dswarm.commons.version>0.0.3.2-SNAPSHOT</dswarm.commons.version>
 		<junit.version>4.12</junit.version>
 		<version.slf4j.api>1.7.21</version.slf4j.api>
