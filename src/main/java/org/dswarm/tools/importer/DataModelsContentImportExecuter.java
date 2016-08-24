@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2016 SLUB Dresden (<code@dswarm.org>)
+ * Copyright © 2016 SLUB Dresden (<code@dswarm.org>)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -67,7 +67,7 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}'", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI))
 				.toBlocking().toIterable();
 
-		resultTuples.forEach(resultTuple2 -> System.out.println(resultTuple2.v2()));
+		resultTuples.forEach(resultTuple2 -> LOG.trace("response for data model '{}' = '{}'", resultTuple2.v1(), resultTuple2.v2()));
 	}
 
 	public static void main(final String[] args) {

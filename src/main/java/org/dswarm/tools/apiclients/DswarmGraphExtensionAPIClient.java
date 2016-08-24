@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2016 SLUB Dresden (<code@dswarm.org>)
+ * Copyright © 2016 SLUB Dresden (<code@dswarm.org>)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,10 +18,8 @@ package org.dswarm.tools.apiclients;
 import java.io.BufferedInputStream;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.nio.charset.Charset;
-import java.util.concurrent.ExecutionException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 
 import javax.ws.rs.client.Entity;
@@ -31,7 +29,7 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.net.HttpHeaders;
 import com.google.common.util.concurrent.Futures;
-import org.apache.commons.io.Charsets;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.glassfish.jersey.client.rx.RxWebTarget;
 import org.glassfish.jersey.client.rx.rxjava.RxObservableInvoker;
@@ -47,7 +45,6 @@ import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.utils.DswarmToolUtils;
-import org.dswarm.tools.utils.RxUtils;
 
 /**
  * @author tgaengler
@@ -62,20 +59,20 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 	private static final String READ_DATA_MODEL_CONTENT_ENDPOINT = String.format("%s%s%s", GDM_ENDPOINT_IDENTIFIER, SLASH, GET_ENDPOINT_IDENTIFIER);
 	private static final String WRITE_DATA_MODEL_CONTENT_ENDPOINT = String.format("%s%s%s", GDM_ENDPOINT_IDENTIFIER, SLASH, PUT_ENDPOINT_IDENTIFIER);
 	private static final String EXPORT_TYPE = "exported";
-	private static final String IMPORT_TYPE = "imported";
 
 	private static final String MULTIPART_MIXED = "multipart/mixed";
 	public static final String CHUNKED_TRANSFER_ENCODING = "chunked";
 
 	private static final String WRITE_GDM = "write to graph database";
 
-	private final ExecutorService importExecutorService;
+	static {
+
+		System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
+	}
 
 	public DswarmGraphExtensionAPIClient(final String dswarmGraphExtensionAPIBaseURI) {
 
 		super(dswarmGraphExtensionAPIBaseURI, DswarmToolsStatics.DATA_MODEL);
-
-		importExecutorService = RxUtils.getObjectImporterExecutorService(objectName);
 	}
 
 	public Observable<Tuple<String, String>> fetchDataModelsContent(final Observable<Tuple<String, String>> dataModelRequestInputObservable) {
@@ -126,81 +123,62 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 		final String writeDataModelContentRequestJSONString = writeDataModelContentRequestTriple.getMiddle();
 		final String dataModelContentJSONString = writeDataModelContentRequestTriple.getRight();
 
-		System.out.println(writeDataModelContentRequestJSONString);
+		LOG.debug("metadata for write data model content request = '{}'", writeDataModelContentRequestJSONString);
 
 		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(WRITE_DATA_MODEL_CONTENT_ENDPOINT);
 
 		final RxObservableInvoker rx = rxWebTarget.request(MULTIPART_MIXED).header(HttpHeaders.TRANSFER_ENCODING, CHUNKED_TRANSFER_ENCODING).rx();
 
-		final PipedInputStream input = new PipedInputStream();
-		final PipedOutputStream output = new PipedOutputStream();
+		final InputStream input = IOUtils.toInputStream(dataModelContentJSONString, StandardCharsets.UTF_8);
 
-		try {
+		final MultiPart multiPart = new MultiPart();
+		final BufferedInputStream entity1 = new BufferedInputStream(input, CHUNK_SIZE);
 
-			importExecutorService.submit(() -> {
+		multiPart
+				.bodyPart(writeDataModelContentRequestJSONString, MediaType.APPLICATION_JSON_TYPE)
+				.bodyPart(entity1, MediaType.APPLICATION_OCTET_STREAM_TYPE);
 
-				try {
+		// POST the request
+		final Entity<MultiPart> entity = Entity.entity(multiPart, MULTIPART_MIXED);
 
-					output.connect(input);
+		final Observable<Response> post = rx.post(entity).observeOn(importScheduler);
 
-					getBytes(output, dataModelContentJSONString); // turns a Runnable into a Callable which handles exceptions
-				} catch (final IOException e) {
+		final PublishSubject<Response> asyncPost = PublishSubject.create();
+		asyncPost.subscribe(response -> {
 
-					e.printStackTrace();
-				}
-			}).get();
+			try {
 
-			final MultiPart multiPart = new MultiPart();
-			final BufferedInputStream entity1 = new BufferedInputStream(input, CHUNK_SIZE);
+				closeResource(multiPart, WRITE_GDM);
+				closeResource(input, WRITE_GDM);
 
-			multiPart
-					.bodyPart(writeDataModelContentRequestJSONString, MediaType.APPLICATION_JSON_TYPE)
-					.bodyPart(entity1, MediaType.APPLICATION_OCTET_STREAM_TYPE);
+				//TODO maybe check status code here, i.e., should be 200
 
-			// POST the request
-			final Entity<MultiPart> entity = Entity.entity(multiPart, MULTIPART_MIXED);
+				LOG.debug("wrote GDM data for data model '{}' into data hub", dataModelId);
+			} catch (final DswarmToolsException e) {
 
-			final Observable<Response> post = rx.post(entity).observeOn(importScheduler);
+				throw DswarmToolsError.wrap(e);
+			}
+		}, throwable -> {
 
-			final PublishSubject<Response> asyncPost = PublishSubject.create();
-			asyncPost.subscribe(response -> {
+			throw DswarmToolsError.wrap(new DswarmToolsException(
+					String.format("Couldn't store GDM data into database. Received status code '%s' from database endpoint.",
+							throwable.getMessage())));
+		}, () -> LOG.debug("completely wrote GDM data for data model '{}' into data hub", dataModelId));
 
-				try {
+		post.subscribe(asyncPost);
 
-					closeResource(multiPart, WRITE_GDM);
-					closeResource(output, WRITE_GDM);
-					closeResource(input, WRITE_GDM);
+		return asyncPost.map(response -> {
 
-					//TODO maybe check status code here, i.e., should be 200
+			int status = response.getStatus();
 
-					LOG.debug("wrote GDM data for data model '{}' into data hub", dataModelId);
-				} catch (final DswarmToolsException e) {
-
-					throw DswarmToolsError.wrap(e);
-				}
-			}, throwable -> {
-
-				throw DswarmToolsError.wrap(new DswarmToolsException(
-						String.format("Couldn't store GDM data into database. Received status code '%s' from database endpoint.",
-								throwable.getMessage())));
-			}, () -> LOG.debug("completely wrote GDM data for data model '{}' into data hub", dataModelId));
-
-			post.subscribe(asyncPost);
-
-			return asyncPost.map(response -> {
-
-				int status = response.getStatus();
-
-				return Tuple.tuple(dataModelId, String.valueOf(status));
-			});
-		} catch (final InterruptedException | ExecutionException e) {
-
-			throw new DswarmToolsException("couldn't store GDM data into database successfully", e);
-		}
+			return Tuple.tuple(dataModelId, String.valueOf(status));
+		});
 	}
 
 	private Observable<Tuple<String, String>> executePOSTRequest(final Tuple<String, String> requestTuple,
-	                                                             final String requestURI, final String type, final Scheduler scheduler) {
+	                                                             final String requestURI,
+	                                                             final String type,
+	                                                             final Scheduler scheduler) {
 
 		final String dataModelId = requestTuple.v1();
 		final String requestJSONString = requestTuple.v2();
@@ -220,11 +198,6 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 					return getObjectsJSON(dataModelId, dataModelGDMJSONString);
 				})
 				.map(dataModelContentJSON -> serializeObjectJSON(dataModelId, dataModelContentJSON));
-	}
-
-	private void getBytes(final PipedOutputStream output, final String string) throws IOException {
-
-		output.write(string.getBytes(Charsets.UTF_8));
 	}
 
 	private static void closeResource(final Closeable closeable, final String type) throws DswarmToolsException {

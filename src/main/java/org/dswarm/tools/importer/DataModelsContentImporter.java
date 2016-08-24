@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2016 SLUB Dresden (<code@dswarm.org>)
+ * Copyright © 2016 SLUB Dresden (<code@dswarm.org>)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,8 +46,8 @@ public final class DataModelsContentImporter extends AbstractImporter<DswarmGrap
 	}
 
 	/**
-	 * @param importDirectoryName v1 = data model identifier; v2 = data model metadata (JSON)
-	 * @return
+	 * @param importDirectoryName
+	 * @return v1 = data model identifier; v2 = data model metadata (JSON)
 	 */
 	public Observable<Tuple<String, String>> importObjectsContent(final String importDirectoryName) throws DswarmToolsException {
 
@@ -56,7 +56,7 @@ public final class DataModelsContentImporter extends AbstractImporter<DswarmGrap
 		return apiClient.importDataModelsContent(dataModelWriteRequestTripleObservable);
 	}
 
-	private Observable<Triple<String, String, String>> prepareImport2(String importDirectoryName) throws DswarmToolsException {
+	private Observable<Triple<String, String, String>> prepareImport2(final String importDirectoryName) throws DswarmToolsException {
 
 		// read objects from files and prepare content/generate data model write request metadata
 		final Observable<Tuple<String, String>> importObjectTupleObservable = prepareImport(importDirectoryName);
@@ -116,24 +116,13 @@ public final class DataModelsContentImporter extends AbstractImporter<DswarmGrap
 
 		final ObjectNode dataModelWriteRequestMetadataJSON = DswarmToolsStatics.MAPPER.createObjectNode();
 
-		/*
-
-		{
-    "data_model_uri": "http://data.slub-dresden.de/datamodel/DataModel-cf998267-392a-4d87-a33a-88dd1bffb016/data",
-    "deprecate_missing_records": "false",
-    "record_class_uri": "http://purl.org/ontology/bibo/Document",
-    "enable_versioning": "false"
-}
-
-		 */
-
 		final String dataModelURI = String.format(DswarmToolsStatics.DATA_MODEL_URI_TEMPLATE, dataModelIdentifier);
 		final String recorcClassURI = DswarmToolUtils.getRecordClassURI(dataModelMetadataJSON);
 
 		dataModelWriteRequestMetadataJSON.put(DswarmToolsStatics.DATA_MODEL_URI_IDENTIFIER, dataModelURI)
 				.put(DswarmToolsStatics.RECORD_CLASS_URI_IDENTIFIER, recorcClassURI)
-				.put("deprecate_missing_records", "false")
-				.put("enable_versioning", "false");
+				.put(DswarmToolsStatics.DEPRECATE_MISSING_RECORDS, Boolean.FALSE.toString())
+				.put(DswarmToolsStatics.ENABLE_VERSIONING, Boolean.FALSE.toString());
 
 		// TODO: add content schema, if necessary
 

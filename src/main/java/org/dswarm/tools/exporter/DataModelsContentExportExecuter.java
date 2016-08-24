@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2016 SLUB Dresden (<code@dswarm.org>)
+ * Copyright © 2016 SLUB Dresden (<code@dswarm.org>)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -91,12 +91,12 @@ public class DataModelsContentExportExecuter extends AbstractExecuter {
 
 		final AtomicInteger counter = new AtomicInteger(0);
 
-		Iterable<String> projectIds = dataModelContentJSONStringObservable
-				.doOnNext(projectDescriptionJSONString -> counter.incrementAndGet())
+		Iterable<String> dataModelDescriptions = dataModelContentJSONStringObservable
+				.doOnNext(dataModelDescriptionJSONString -> counter.incrementAndGet())
 				.doOnCompleted(() -> LOG.info("exported content from '{}' data models from '{}' to '{}'", counter.get(), dswarmGraphExtensionAPIBaseURI, exportDirectoryName))
 				.toBlocking().toIterable();
 
-		projectIds.forEach(System.out::println);
+		dataModelDescriptions.forEach(dataModelDescription -> LOG.trace("exported data model description '{}'", dataModelDescription));
 	}
 
 	public static void main(final String[] args) {
