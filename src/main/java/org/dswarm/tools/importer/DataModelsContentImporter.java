@@ -61,7 +61,9 @@ public final class DataModelsContentImporter extends AbstractImporter<DswarmGrap
 		// read objects from files and prepare content/generate data model write request metadata
 		final Observable<Tuple<String, String>> importObjectTupleObservable = prepareImport(importDirectoryName);
 
-		return importObjectTupleObservable.flatMap(importObjectTuple -> {
+		return importObjectTupleObservable
+				.onBackpressureBuffer(100)
+				.flatMap(importObjectTuple -> {
 
 			final String dataModelIdentifier = importObjectTuple.v1();
 			final String dataModelContentJSONString = importObjectTuple.v2();
