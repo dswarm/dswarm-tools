@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -61,9 +61,21 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 		final Observable<Tuple<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName);
 
 		final AtomicInteger counter = new AtomicInteger(0);
+		final AtomicInteger negativeCounter = new AtomicInteger(0);
 
 		final Iterable<Tuple<String, String>> resultTuples = resultTupleObservable
-				.doOnNext(resultTuple -> counter.incrementAndGet())
+				.doOnNext(resultTuple -> {
+
+					final String statusCode = resultTuple.v2();
+
+					if(STATUS_CODE_200.equals(statusCode)) {
+
+						counter.incrementAndGet();
+					} else {
+
+						negativeCounter.incrementAndGet();
+					}
+				})
 				.doOnNext(resultTuple1 -> {
 
 					final String dataModelIdentifier = resultTuple1.v1();
@@ -77,7 +89,7 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 						LOG.error("import of content from data model '{}' to '{}' fail with status code '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI, statusCode);
 					}
 				})
-				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}'", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI))
+				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}' ('{}' failed)", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI, negativeCounter.get()))
 				.toBlocking().toIterable();
 
 		resultTuples.forEach(resultTuple2 -> LOG.trace("response for data model '{}' = '{}'", resultTuple2.v1(), resultTuple2.v2()));
