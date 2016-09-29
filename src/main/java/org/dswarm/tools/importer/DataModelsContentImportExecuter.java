@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,6 +35,7 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 	private static final Logger LOG = LoggerFactory.getLogger(DataModelsContentImportExecuter.class);
 
 	private static final StringBuilder HELP_SB = new StringBuilder();
+	private static final String STATUS_CODE_200 = "200";
 
 	static {
 
@@ -63,7 +64,19 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 
 		final Iterable<Tuple<String, String>> resultTuples = resultTupleObservable
 				.doOnNext(resultTuple -> counter.incrementAndGet())
-				.doOnNext(resultTuple1 -> LOG.debug("imported content from data model '{}' to '{}'", resultTuple1.v1(), dswarmGraphExtensionAPIBaseURI))
+				.doOnNext(resultTuple1 -> {
+
+					final String dataModelIdentifier = resultTuple1.v1();
+					final String statusCode = resultTuple1.v2();
+
+					if (STATUS_CODE_200.equals(statusCode)) {
+
+						LOG.debug("imported content from data model '{}' to '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI);
+					} else {
+
+						LOG.error("import of content from data model '{}' to '{}' fail with status code '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI, statusCode);
+					}
+				})
 				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}'", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI))
 				.toBlocking().toIterable();
 
