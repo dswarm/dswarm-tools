@@ -84,6 +84,7 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 
 	public Observable<Tuple<String, String>> importDataModelsContent(final Observable<Triple<String, String, String>> dataModelWriteRequestTripleObservable) {
 
+		// TODO: this is just a workaround to process the request serially (i.e. one after another) until the processing at the endpoint is fixed (i.e. also prepared for parallel requests)
 		return dataModelWriteRequestTripleObservable.flatMap(dataModelWriteRequestTriple -> {
 
 			try {
@@ -93,7 +94,7 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 
 				throw DswarmToolsError.wrap(e);
 			}
-		});
+		}, 1);
 	}
 
 	private static Observable<Tuple<String, String>> generateReadDataModelRequest(final Tuple<String, String> dataModelRequestInputTuple) {
