@@ -61,7 +61,7 @@ public abstract class AbstractImporter<APICLIENT> {
 
 	protected Observable<Tuple<String, String>> prepareImport(final String importDirectoryName) throws DswarmToolsException {
 
-		final String[] importObjectFileNames = readFileNames(importDirectoryName);
+		final String[] importObjectFileNames = DswarmToolUtils.readFileNames(importDirectoryName);
 
 		// read objects from files and prepare content
 		return Observable.from(importObjectFileNames)
@@ -69,22 +69,6 @@ public abstract class AbstractImporter<APICLIENT> {
 				.map(importObjectFileName -> readObjectFile(importDirectoryName, importObjectFileName))
 				.map(this::deserializeObjectFile)
 				.map(this::extractObjectIdentifier);
-	}
-
-	protected String[] readFileNames(final String importDirectoryName) throws DswarmToolsException {
-
-		final File importDirectory = new File(importDirectoryName);
-
-		if (!importDirectory.isDirectory()) {
-
-			final String message = String.format("'%s' is no directory - please specify a folder as import directory", importDirectoryName);
-
-			LOG.error(message);
-
-			throw new DswarmToolsException(message);
-		}
-
-		return importDirectory.list();
 	}
 
 	protected abstract Observable<Tuple<String, String>> executeImport(final Observable<Tuple<String, String>> importObjectTupleObservable);

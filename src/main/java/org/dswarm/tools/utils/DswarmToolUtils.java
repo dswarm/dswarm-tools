@@ -17,6 +17,7 @@ package org.dswarm.tools.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -55,6 +56,29 @@ public final class DswarmToolUtils {
 		final byte[] inputBytes = java.nio.file.Files.readAllBytes(inputFilePath);
 
 		return new String(inputBytes, Charsets.UTF_8);
+	}
+
+	public static InputStream readFromFile2(final String directory, final String fileName) throws IOException {
+
+		final Path inputFilePath = Paths.get(directory + File.separator + fileName);
+
+		return java.nio.file.Files.newInputStream(inputFilePath);
+	}
+
+	public static String[] readFileNames(final String importDirectoryName) throws DswarmToolsException {
+
+		final File importDirectory = new File(importDirectoryName);
+
+		if (!importDirectory.isDirectory()) {
+
+			final String message = String.format("'%s' is no directory - please specify a folder as import directory", importDirectoryName);
+
+			LOG.error(message);
+
+			throw new DswarmToolsException(message);
+		}
+
+		return importDirectory.list();
 	}
 
 	public static ObjectNode deserializeAsObjectNode(final String jsonString, final String errorMessage) {

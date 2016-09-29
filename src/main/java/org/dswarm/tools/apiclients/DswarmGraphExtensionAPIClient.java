@@ -19,8 +19,6 @@ import java.io.BufferedInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutorService;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -29,7 +27,6 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.net.HttpHeaders;
 import com.google.common.util.concurrent.Futures;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.glassfish.jersey.client.rx.RxWebTarget;
 import org.glassfish.jersey.client.rx.rxjava.RxObservableInvoker;
@@ -82,19 +79,10 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 						.flatMap(this::retrieveDataModelContent));
 	}
 
-	public Observable<Tuple<String, String>> importDataModelsContent(final Observable<Triple<String, String, String>> dataModelWriteRequestTripleObservable) {
+	public Observable<Tuple<String, String>> importDataModelsContent(final Observable<Triple<String, String, InputStream>> dataModelWriteRequestTripleObservable) {
 
 		// TODO: this is just a workaround to process the request serially (i.e. one after another) until the processing at the endpoint is fixed (i.e. also prepared for parallel requests)
-		return dataModelWriteRequestTripleObservable.flatMap(dataModelWriteRequestTriple -> {
-
-			try {
-
-				return importDataModelContent(dataModelWriteRequestTriple);
-			} catch (final DswarmToolsException e) {
-
-				throw DswarmToolsError.wrap(e);
-			}
-		}, 1);
+		return dataModelWriteRequestTripleObservable.flatMap(this::importDataModelContent, 1);
 	}
 
 	private static Observable<Tuple<String, String>> generateReadDataModelRequest(final Tuple<String, String> dataModelRequestInputTuple) {
@@ -118,11 +106,11 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 		return executePOSTRequest(readDataModelContentRequestTuple, READ_DATA_MODEL_CONTENT_ENDPOINT, EXPORT_TYPE, exportScheduler);
 	}
 
-	private Observable<Tuple<String, String>> importDataModelContent(final Triple<String, String, String> writeDataModelContentRequestTriple) throws DswarmToolsException {
+	private Observable<Tuple<String, String>> importDataModelContent(final Triple<String, String, InputStream> writeDataModelContentRequestTriple) {
 
 		final String dataModelId = writeDataModelContentRequestTriple.getLeft();
 		final String writeDataModelContentRequestJSONString = writeDataModelContentRequestTriple.getMiddle();
-		final String dataModelContentJSONString = writeDataModelContentRequestTriple.getRight();
+		final InputStream dataModelContentJSONIS = writeDataModelContentRequestTriple.getRight();
 
 		LOG.debug("metadata for write data model content request = '{}'", writeDataModelContentRequestJSONString);
 
@@ -130,10 +118,8 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 
 		final RxObservableInvoker rx = rxWebTarget.request(MULTIPART_MIXED).header(HttpHeaders.TRANSFER_ENCODING, CHUNKED_TRANSFER_ENCODING).rx();
 
-		final InputStream input = IOUtils.toInputStream(dataModelContentJSONString, StandardCharsets.UTF_8);
-
 		final MultiPart multiPart = new MultiPart();
-		final BufferedInputStream entity1 = new BufferedInputStream(input, CHUNK_SIZE);
+		final BufferedInputStream entity1 = new BufferedInputStream(dataModelContentJSONIS, CHUNK_SIZE);
 
 		multiPart
 				.bodyPart(writeDataModelContentRequestJSONString, MediaType.APPLICATION_JSON_TYPE)
@@ -150,7 +136,8 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 			try {
 
 				closeResource(multiPart, WRITE_GDM);
-				closeResource(input, WRITE_GDM);
+				closeResource(entity1, WRITE_GDM);
+				closeResource(dataModelContentJSONIS, WRITE_GDM);
 
 				//TODO maybe check status code here, i.e., should be 200
 
