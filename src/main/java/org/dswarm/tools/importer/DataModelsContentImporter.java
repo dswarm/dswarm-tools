@@ -104,7 +104,7 @@ public final class DataModelsContentImporter {
 
 						return Triple.of(dataModelIdentifier, dataModelWriteRequestMetadata, dataModelContentJSONIS);
 					});
-				}, 1);
+				});
 	}
 
 	protected Tuple<String, InputStream> extractObjectIdentifier(final Tuple<String, InputStream> importObjectTriple) {
