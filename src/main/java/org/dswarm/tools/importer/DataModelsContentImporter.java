@@ -81,7 +81,7 @@ public final class DataModelsContentImporter extends AbstractImporter<DswarmGrap
 
 				return Triple.of(dataModelIdentifier, dataModelWriteRequestMetadata, dataModelContentJSONString);
 			});
-		}, 1);
+		}, 1).onBackpressureBuffer(100);
 	}
 
 	@Override
