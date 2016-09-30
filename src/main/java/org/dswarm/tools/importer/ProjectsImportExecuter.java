@@ -64,6 +64,7 @@ public class ProjectsImportExecuter extends AbstractExecuter {
 				.doOnNext(projectDescriptionTuple -> counter.incrementAndGet())
 				.doOnNext(projectDescriptionTuple1 -> LOG.debug("imported project '{}' to '{}'", projectDescriptionTuple1.v1(), dswarmBackendAPIBaseURI))
 				.doOnCompleted(() -> LOG.info("imported '{}' projects from '{}' to '{}'", counter.get(), importDirectoryName, dswarmBackendAPIBaseURI))
+				.doOnCompleted(() -> System.exit(0))
 				.toBlocking().toIterable();
 
 		projectDescriptionTuples.forEach(projectDescriptionTuple2 -> LOG.trace("response for data model '{}' = '{}'", projectDescriptionTuple2.v1(), projectDescriptionTuple2.v2()));

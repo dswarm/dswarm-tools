@@ -120,6 +120,8 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 		try {
 
 			executeImport(dswarmBackendAPIBaseURI, dswarmGraphExtensionAPIBaseURI, importDirectoryName);
+
+			System.exit(0);
 		} catch (final Exception e) {
 
 			LOG.error("something went wrong at import execution.", e);

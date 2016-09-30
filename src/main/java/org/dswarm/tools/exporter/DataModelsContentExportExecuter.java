@@ -94,6 +94,7 @@ public class DataModelsContentExportExecuter extends AbstractExecuter {
 		Iterable<String> dataModelDescriptions = dataModelContentJSONStringObservable
 				.doOnNext(dataModelDescriptionJSONString -> counter.incrementAndGet())
 				.doOnCompleted(() -> LOG.info("exported content from '{}' data models from '{}' to '{}'", counter.get(), dswarmGraphExtensionAPIBaseURI, exportDirectoryName))
+				.doOnCompleted(() -> System.exit(0))
 				.toBlocking().toIterable();
 
 		dataModelDescriptions.forEach(dataModelDescription -> LOG.trace("exported data model description '{}'", dataModelDescription));
