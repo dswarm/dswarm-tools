@@ -94,7 +94,7 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 		connectableObservable.connect();
 		resultTupleObservable.connect();
 
-		blockingObservable.lastOrDefault(null);
+		blockingObservable.firstOrDefault(null);
 	}
 
 	public static void main(final String[] args) {
