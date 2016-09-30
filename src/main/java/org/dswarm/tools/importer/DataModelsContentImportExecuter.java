@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.observables.BlockingObservable;
+import rx.observables.ConnectableObservable;
 
 import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.AbstractExecuter;
@@ -58,24 +60,12 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 
 		final DataModelsContentImporter dataModelsContentImporter = new DataModelsContentImporter(dswarmGraphExtensionAPIBaseURI, dswarmBackendAPIBaseURI);
 
-		final Observable<Tuple<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName);
+		final ConnectableObservable<Tuple<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName).publish();
 
 		final AtomicInteger counter = new AtomicInteger(0);
 		final AtomicInteger negativeCounter = new AtomicInteger(0);
 
-		final Iterable<Tuple<String, String>> resultTuples = resultTupleObservable
-				.doOnNext(resultTuple -> {
-
-					final String statusCode = resultTuple.v2();
-
-					if(STATUS_CODE_200.equals(statusCode)) {
-
-						counter.incrementAndGet();
-					} else {
-
-						negativeCounter.incrementAndGet();
-					}
-				})
+		final ConnectableObservable<Tuple<String, String>> connectableObservable = resultTupleObservable
 				.doOnNext(resultTuple1 -> {
 
 					final String dataModelIdentifier = resultTuple1.v1();
@@ -83,14 +73,26 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 
 					if (STATUS_CODE_200.equals(statusCode)) {
 
+						counter.incrementAndGet();
+
 						LOG.debug("imported content from data model '{}' to '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI);
 					} else {
+
+						negativeCounter.incrementAndGet();
 
 						LOG.error("import of content from data model '{}' to '{}' fail with status code '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI, statusCode);
 					}
 				})
 				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}' ('{}' failed)", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI, negativeCounter.get()))
-				.toBlocking().toIterable();
+				.onBackpressureBuffer(100)
+				.publish();
+
+		final BlockingObservable<Tuple<String, String>> blockingObservable = connectableObservable.toBlocking();
+
+		connectableObservable.connect();
+		resultTupleObservable.connect();
+
+		final Iterable<Tuple<String, String>> resultTuples =  blockingObservable.toIterable();
 
 		resultTuples.forEach(resultTuple2 -> LOG.trace("response for data model '{}' = '{}'", resultTuple2.v1(), resultTuple2.v2()));
 	}
