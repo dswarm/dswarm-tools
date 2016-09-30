@@ -82,9 +82,11 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 
 						LOG.error("import of content from data model '{}' to '{}' fail with status code '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI, statusCode);
 					}
+
+					LOG.trace("response for data model '{}' = '{}'", dataModelIdentifier, statusCode);
 				})
 				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}' ('{}' failed)", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI, negativeCounter.get()))
-				.onBackpressureBuffer(100)
+				.onBackpressureBuffer(3)
 				.publish();
 
 		final BlockingObservable<Tuple<String, String>> blockingObservable = connectableObservable.toBlocking();
@@ -92,9 +94,7 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 		connectableObservable.connect();
 		resultTupleObservable.connect();
 
-		final Iterable<Tuple<String, String>> resultTuples =  blockingObservable.toIterable();
-
-		resultTuples.forEach(resultTuple2 -> LOG.trace("response for data model '{}' = '{}'", resultTuple2.v1(), resultTuple2.v2()));
+		blockingObservable.lastOrDefault(null);
 	}
 
 	public static void main(final String[] args) {
