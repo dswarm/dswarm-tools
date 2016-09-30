@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ import java.io.BufferedInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.Executors;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -35,7 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Scheduler;
-import rx.subjects.PublishSubject;
+import rx.schedulers.Schedulers;
 
 import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsError;
@@ -61,6 +62,8 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 	public static final String CHUNKED_TRANSFER_ENCODING = "chunked";
 
 	private static final String WRITE_GDM = "write to graph database";
+
+	private static final Scheduler IMPORT_SCHEDULER = Schedulers.from(Executors.newSingleThreadExecutor());
 
 	static {
 
@@ -127,10 +130,11 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 		// POST the request
 		final Entity<MultiPart> entity = Entity.entity(multiPart, MULTIPART_MIXED);
 
-		final Observable<Response> post = rx.post(entity).observeOn(importScheduler);
+		final Observable<Response> post = rx.post(entity).observeOn(IMPORT_SCHEDULER);
 
-		final PublishSubject<Response> asyncPost = PublishSubject.create();
-		asyncPost.subscribe(response -> {
+		return post.map(response -> {
+
+			int status = response.getStatus();
 
 			try {
 
@@ -138,28 +142,27 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 				closeResource(entity1, WRITE_GDM);
 				closeResource(dataModelContentJSONIS, WRITE_GDM);
 
-				//TODO maybe check status code here, i.e., should be 200
-
-				LOG.debug("wrote GDM data for data model '{}' into data hub", dataModelId);
 			} catch (final DswarmToolsException e) {
 
 				throw DswarmToolsError.wrap(e);
 			}
-		}, throwable -> {
 
-			throw DswarmToolsError.wrap(new DswarmToolsException(
-					String.format("Couldn't store GDM data into database. Received status code '%s' from database endpoint.",
-							throwable.getMessage())));
-		}, () -> LOG.debug("completely wrote GDM data for data model '{}' into data hub", dataModelId));
+			if (status == 200) {
 
-		post.subscribe(asyncPost);
+				LOG.debug("wrote GDM data for data model '{}' into data hub", dataModelId);
+			} else {
 
-		return asyncPost.map(response -> {
-
-			int status = response.getStatus();
+				throw DswarmToolsError.wrap(new DswarmToolsException(
+						String.format("Couldn't store GDM data into database. Received status code '%s' from database endpoint (response body = '%s').", status, response.readEntity(String.class))));
+			}
 
 			return Tuple.tuple(dataModelId, String.valueOf(status));
-		});
+		})
+				.doOnError(throwable -> {
+
+					throw DswarmToolsError.wrap(new DswarmToolsException(String.format("Couldn't store GDM data into database (err0r = '%s')", throwable.getMessage())));
+				})
+				.doOnCompleted(() -> LOG.debug("completely wrote GDM data for data model '{}' into data hub", dataModelId));
 	}
 
 	private Observable<Tuple<String, String>> executePOSTRequest(final Tuple<String, String> requestTuple,
