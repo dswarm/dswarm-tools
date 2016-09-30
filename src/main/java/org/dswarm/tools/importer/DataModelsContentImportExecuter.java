@@ -82,13 +82,12 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 
 						LOG.error("import of content from data model '{}' to '{}' fail with status code '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI, statusCode);
 					}
-
-					LOG.trace("response for data model '{}' = '{}'", dataModelIdentifier, statusCode);
 				})
 				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}' ('{}' failed)", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI, negativeCounter.get()))
 				.doOnCompleted(() -> System.exit(0))
 				.toBlocking()
-				.firstOrDefault(null);
+				.toIterable()
+				.forEach(resultTuple -> LOG.info("response for data model '{}' = '{}'", resultTuple.v1(), resultTuple.v2()));
 	}
 
 	public static void main(final String[] args) {
