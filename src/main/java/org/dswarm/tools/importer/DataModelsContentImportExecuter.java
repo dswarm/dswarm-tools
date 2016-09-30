@@ -60,12 +60,12 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 
 		final DataModelsContentImporter dataModelsContentImporter = new DataModelsContentImporter(dswarmGraphExtensionAPIBaseURI, dswarmBackendAPIBaseURI);
 
-		final ConnectableObservable<Tuple<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName).publish();
+		final Observable<Tuple<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName);
 
 		final AtomicInteger counter = new AtomicInteger(0);
 		final AtomicInteger negativeCounter = new AtomicInteger(0);
 
-		final ConnectableObservable<Tuple<String, String>> connectableObservable = resultTupleObservable
+		resultTupleObservable
 				.doOnNext(resultTuple1 -> {
 
 					final String dataModelIdentifier = resultTuple1.v1();
@@ -86,15 +86,9 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 					LOG.trace("response for data model '{}' = '{}'", dataModelIdentifier, statusCode);
 				})
 				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}' ('{}' failed)", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI, negativeCounter.get()))
-				.onBackpressureBuffer(3)
-				.publish();
-
-		final BlockingObservable<Tuple<String, String>> blockingObservable = connectableObservable.toBlocking();
-
-		connectableObservable.connect();
-		resultTupleObservable.connect();
-
-		blockingObservable.firstOrDefault(null);
+				.doOnCompleted(() -> System.exit(0))
+				.toBlocking()
+				.firstOrDefault(null);
 	}
 
 	public static void main(final String[] args) {
