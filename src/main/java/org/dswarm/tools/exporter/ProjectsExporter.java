@@ -15,9 +15,9 @@
  */
 package org.dswarm.tools.exporter;
 
+import javaslang.Tuple2;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 
@@ -32,7 +32,7 @@ public final class ProjectsExporter extends AbstractExporter<DswarmProjectsAPICl
 	}
 
 	@Override
-	protected Observable<Tuple<String, String>> fetchObjects() {
+	protected Observable<Tuple2<String, String>> fetchObjects() {
 
 		return apiClient.fetchObjects();
 	}

@@ -18,13 +18,13 @@ package org.dswarm.tools.apiclients;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 
+import javaslang.Tuple2;
 import org.glassfish.jersey.client.rx.RxWebTarget;
 import org.glassfish.jersey.client.rx.rxjava.RxObservableInvoker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.utils.DswarmToolUtils;
 
@@ -44,7 +44,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 		super(dswarmBackendAPIBaseURI, objectName);
 	}
 
-	public Observable<Tuple<String, String>> fetchObjects() {
+	public Observable<Tuple2<String, String>> fetchObjects() {
 
 		// 1. retrieve all objects (in short form)
 		return retrieveAllObjectIds()
@@ -52,7 +52,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.flatMap(this::retrieveObject);
 	}
 
-	public Observable<Tuple<String, String>> importObjects(final Observable<Tuple<String, String>> objectDescriptionTupleObservable) {
+	public Observable<Tuple2<String, String>> importObjects(final Observable<Tuple2<String, String>> objectDescriptionTupleObservable) {
 
 		return objectDescriptionTupleObservable.flatMap(this::importObject);
 	}
@@ -78,7 +78,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 						.map(objectDescriptionJSON -> objectDescriptionJSON.get(DswarmToolsStatics.UUID_IDENTIFIER).asText()));
 	}
 
-	public Observable<Tuple<String, String>> retrieveObject(final String objectIdentifier) {
+	public Observable<Tuple2<String, String>> retrieveObject(final String objectIdentifier) {
 
 		LOG.debug("trying to retrieve full {} description for {} '{}'", objectName, objectName, objectIdentifier);
 
@@ -101,10 +101,10 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.map(objectDescriptionJSON -> serializeObjectJSON(objectIdentifier, objectDescriptionJSON));
 	}
 
-	protected Observable<Tuple<String, String>> importObject(final Tuple<String, String> objectDescriptionTuple) {
+	protected Observable<Tuple2<String, String>> importObject(final Tuple2<String, String> objectDescriptionTuple) {
 
-		final String objectIdentifier = objectDescriptionTuple.v1();
-		final String objectDescriptionJSONString = objectDescriptionTuple.v2();
+		final String objectIdentifier = objectDescriptionTuple._1;
+		final String objectDescriptionJSONString = objectDescriptionTuple._2;
 
 		LOG.debug("trying to import full {} description of {} '{}'", objectName, objectName, objectIdentifier);
 

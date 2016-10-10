@@ -21,6 +21,8 @@ import javax.ws.rs.client.WebTarget;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import javaslang.Tuple;
+import javaslang.Tuple2;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.rx.RxWebTarget;
 import org.glassfish.jersey.client.rx.rxjava.RxObservable;
@@ -31,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Scheduler;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.utils.DswarmToolUtils;
 import org.dswarm.tools.utils.RxUtils;
 
@@ -86,13 +87,13 @@ public abstract class AbstractAPIClient {
 		return DswarmToolUtils.deserializeAsArrayNode(objectJSONString, errorMessage);
 	}
 
-	protected Tuple<String, String> serializeObjectJSON(final String objectIdentifier, final Object objectJSON) {
+	protected Tuple2<String, String> serializeObjectJSON(final String objectIdentifier, final Object objectJSON) {
 
 		final String errorMessage = String.format("something went wrong, while trying to serialize %s %s", objectName, objectIdentifier);
 
 		final String objectJSONString = DswarmToolUtils.serialize(objectJSON, errorMessage);
 
-		return Tuple.tuple(objectIdentifier, objectJSONString);
+		return Tuple.of(objectIdentifier, objectJSONString);
 	}
 
 	private static Client client() {

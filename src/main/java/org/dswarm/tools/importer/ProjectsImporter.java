@@ -16,11 +16,11 @@
 package org.dswarm.tools.importer;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import javaslang.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
 import org.dswarm.tools.utils.DswarmToolUtils;
@@ -38,7 +38,7 @@ public final class ProjectsImporter extends AbstractImporter<DswarmProjectsAPICl
 	}
 
 	@Override
-	protected Observable<Tuple<String, String>> executeImport(final Observable<Tuple<String, String>> importObjectTupleObservable) {
+	protected Observable<Tuple2<String, String>> executeImport(final Observable<Tuple2<String, String>> importObjectTupleObservable) {
 
 		return apiClient.importObjects(importObjectTupleObservable);
 	}

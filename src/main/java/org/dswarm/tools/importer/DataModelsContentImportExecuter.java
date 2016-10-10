@@ -18,13 +18,11 @@ package org.dswarm.tools.importer;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javaslang.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
-import rx.observables.BlockingObservable;
-import rx.observables.ConnectableObservable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.AbstractExecuter;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
@@ -60,7 +58,7 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 
 		final DataModelsContentImporter dataModelsContentImporter = new DataModelsContentImporter(dswarmGraphExtensionAPIBaseURI, dswarmBackendAPIBaseURI);
 
-		final Observable<Tuple<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName);
+		final Observable<Tuple2<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName);
 
 		final AtomicInteger counter = new AtomicInteger(0);
 		final AtomicInteger negativeCounter = new AtomicInteger(0);
@@ -68,8 +66,8 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 		resultTupleObservable
 				.doOnNext(resultTuple1 -> {
 
-					final String dataModelIdentifier = resultTuple1.v1();
-					final String statusCode = resultTuple1.v2();
+					final String dataModelIdentifier = resultTuple1._1;
+					final String statusCode = resultTuple1._2;
 
 					if (STATUS_CODE_200.equals(statusCode)) {
 
@@ -87,7 +85,7 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 				.doOnCompleted(() -> System.exit(0))
 				.toBlocking()
 				.toIterable()
-				.forEach(resultTuple -> LOG.info("response for data model '{}' = '{}'", resultTuple.v1(), resultTuple.v2()));
+				.forEach(resultTuple -> LOG.info("response for data model '{}' = '{}'", resultTuple._1, resultTuple._2));
 	}
 
 	public static void main(final String[] args) {

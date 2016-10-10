@@ -19,15 +19,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.commons.lang3.tuple.Triple;
+import javaslang.Tuple;
+import javaslang.Tuple2;
+import javaslang.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Scheduler;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
@@ -60,14 +60,14 @@ public final class DataModelsContentImporter {
 	 * @param importDirectoryName
 	 * @return v1 = data model identifier; v2 = data model metadata (JSON)
 	 */
-	public Observable<Tuple<String, String>> importObjectsContent(final String importDirectoryName) throws DswarmToolsException {
+	public Observable<Tuple2<String, String>> importObjectsContent(final String importDirectoryName) throws DswarmToolsException {
 
-		final Observable<Triple<String, String, InputStream>> dataModelWriteRequestTripleObservable = prepareImport2(importDirectoryName);
+		final Observable<Tuple3<String, String, InputStream>> dataModelWriteRequestTripleObservable = prepareImport2(importDirectoryName);
 
 		return apiClient.importDataModelsContent(dataModelWriteRequestTripleObservable);
 	}
 
-	protected Observable<Tuple<String, InputStream>> prepareImport(final String importDirectoryName) throws DswarmToolsException {
+	protected Observable<Tuple2<String, InputStream>> prepareImport(final String importDirectoryName) throws DswarmToolsException {
 
 		final String[] importObjectFileNames = DswarmToolUtils.readFileNames(importDirectoryName);
 
@@ -78,22 +78,22 @@ public final class DataModelsContentImporter {
 				.map(this::extractObjectIdentifier);
 	}
 
-	private Observable<Triple<String, String, InputStream>> prepareImport2(final String importDirectoryName) throws DswarmToolsException {
+	private Observable<Tuple3<String, String, InputStream>> prepareImport2(final String importDirectoryName) throws DswarmToolsException {
 
 		// read objects from files and prepare content/generate data model write request metadata
-		final Observable<Tuple<String, InputStream>> importObjectTupleObservable = prepareImport(importDirectoryName);
+		final Observable<Tuple2<String, InputStream>> importObjectTupleObservable = prepareImport(importDirectoryName);
 
 		return importObjectTupleObservable
 				.flatMap(importObjectTuple -> {
 
-					final String dataModelIdentifier = importObjectTuple.v1();
-					final InputStream dataModelContentJSONIS = importObjectTuple.v2();
+					final String dataModelIdentifier = importObjectTuple._1;
+					final InputStream dataModelContentJSONIS = importObjectTuple._2;
 
-					final Observable<Tuple<String, String>> dataModelMetadataTupleObservable = dswarmDataModelsAPIClient.retrieveObject(dataModelIdentifier);
+					final Observable<Tuple2<String, String>> dataModelMetadataTupleObservable = dswarmDataModelsAPIClient.retrieveObject(dataModelIdentifier);
 
 					return dataModelMetadataTupleObservable.map(dataModelMetadataTuple -> {
 
-						final String dataModelMetadataJSONString = dataModelMetadataTuple.v2();
+						final String dataModelMetadataJSONString = dataModelMetadataTuple._2;
 
 						final String errorMessage = String.format("something went wrong, while deserializing data model '%s'", dataModelIdentifier);
 
@@ -102,28 +102,28 @@ public final class DataModelsContentImporter {
 						// generate data model write request metadata (JSON) with help of data model metadata (JSON)
 						final String dataModelWriteRequestMetadata = generateDataModelWriteRequestMetadata(dataModelIdentifier, dataModelMetadataJSON);
 
-						return Triple.of(dataModelIdentifier, dataModelWriteRequestMetadata, dataModelContentJSONIS);
+						return Tuple.of(dataModelIdentifier, dataModelWriteRequestMetadata, dataModelContentJSONIS);
 					});
 				});
 	}
 
-	protected Tuple<String, InputStream> extractObjectIdentifier(final Tuple<String, InputStream> importObjectTriple) {
+	protected Tuple2<String, InputStream> extractObjectIdentifier(final Tuple2<String, InputStream> importObjectTriple) {
 
-		final String absoluteImportObjectFileName = importObjectTriple.v1();
-		final InputStream importObjectJSONIS = importObjectTriple.v2();
+		final String absoluteImportObjectFileName = importObjectTriple._1;
+		final InputStream importObjectJSONIS = importObjectTriple._2;
 
 		final String[] split = absoluteImportObjectFileName.split("\\.");
 
 		final String importObjectIdentifier = split[split.length - 2];
 
-		return Tuple.tuple(importObjectIdentifier, importObjectJSONIS);
+		return Tuple.of(importObjectIdentifier, importObjectJSONIS);
 	}
 
-	private static Tuple<String, InputStream> readObjectFile(final String importDirectoryName, final String importObjectFileName) {
+	private static Tuple2<String, InputStream> readObjectFile(final String importDirectoryName, final String importObjectFileName) {
 
 		try {
 
-			return Tuple.tuple(importDirectoryName + File.separator + importObjectFileName, DswarmToolUtils.readFromFile2(importDirectoryName, importObjectFileName));
+			return Tuple.of(importDirectoryName + File.separator + importObjectFileName, DswarmToolUtils.readFromFile2(importDirectoryName, importObjectFileName));
 		} catch (final IOException e) {
 
 			final String message = String.format("something went wrong, while trying to read file '%s' in folder '%s'", importObjectFileName, importDirectoryName);

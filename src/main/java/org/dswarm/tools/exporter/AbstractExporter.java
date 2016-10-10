@@ -17,12 +17,12 @@ package org.dswarm.tools.exporter;
 
 import java.io.IOException;
 
+import javaslang.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Scheduler;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.utils.DswarmToolUtils;
@@ -56,12 +56,12 @@ public abstract class AbstractExporter<APICLIENT> {
 				.map(projectDescription -> writeExportObjectToFile(exportDirectoryName, projectDescription));
 	}
 
-	protected abstract Observable<Tuple<String, String>> fetchObjects();
+	protected abstract Observable<Tuple2<String, String>> fetchObjects();
 
-	protected String writeExportObjectToFile(final String exportDirectoryName, final Tuple<String, String> objectDescription) {
+	protected String writeExportObjectToFile(final String exportDirectoryName, final Tuple2<String, String> objectDescription) {
 
-		final String objectIdentifier = objectDescription.v1();
-		final String objectDescriptionJSONString = objectDescription.v2();
+		final String objectIdentifier = objectDescription._1;
+		final String objectDescriptionJSONString = objectDescription._2;
 
 		final String fileName = buildFileName(objectIdentifier);
 

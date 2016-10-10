@@ -15,11 +15,12 @@
  */
 package org.dswarm.tools.apiclients;
 
+import javaslang.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
+
 import org.dswarm.tools.DswarmToolsStatics;
 
 /**
@@ -38,7 +39,7 @@ public final class DswarmProjectsAPIClient extends AbstractDswarmBackendAPIClien
 	}
 
 	@Override
-	public Observable<Tuple<String, String>> importObjects(final Observable<Tuple<String, String>> objectDescriptionTupleObservable) {
+	public Observable<Tuple2<String, String>> importObjects(final Observable<Tuple2<String, String>> objectDescriptionTupleObservable) {
 
 		// TODO: this is just a workaround to process the request serially (i.e. one after another) until the processing at the endpoint is fixed (i.e. also prepared for parallel requests)
 		return objectDescriptionTupleObservable.flatMap(this::importObject, 1);

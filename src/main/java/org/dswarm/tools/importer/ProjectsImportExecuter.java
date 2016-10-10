@@ -18,11 +18,11 @@ package org.dswarm.tools.importer;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javaslang.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.AbstractExecuter;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
@@ -56,18 +56,18 @@ public class ProjectsImportExecuter extends AbstractExecuter {
 
 		final ProjectsImporter projectsImporter = new ProjectsImporter(dswarmBackendAPIBaseURI);
 
-		final Observable<Tuple<String, String>> projectDescriptionTupleObservable = projectsImporter.importObjects(importDirectoryName);
+		final Observable<Tuple2<String, String>> projectDescriptionTupleObservable = projectsImporter.importObjects(importDirectoryName);
 
 		final AtomicInteger counter = new AtomicInteger(0);
 
-		Iterable<Tuple<String, String>> projectDescriptionTuples = projectDescriptionTupleObservable
+		Iterable<Tuple2<String, String>> projectDescriptionTuples = projectDescriptionTupleObservable
 				.doOnNext(projectDescriptionTuple -> counter.incrementAndGet())
-				.doOnNext(projectDescriptionTuple1 -> LOG.debug("imported project '{}' to '{}'", projectDescriptionTuple1.v1(), dswarmBackendAPIBaseURI))
+				.doOnNext(projectDescriptionTuple1 -> LOG.debug("imported project '{}' to '{}'", projectDescriptionTuple1._1, dswarmBackendAPIBaseURI))
 				.doOnCompleted(() -> LOG.info("imported '{}' projects from '{}' to '{}'", counter.get(), importDirectoryName, dswarmBackendAPIBaseURI))
 				.doOnCompleted(() -> System.exit(0))
 				.toBlocking().toIterable();
 
-		projectDescriptionTuples.forEach(projectDescriptionTuple2 -> LOG.trace("response for data model '{}' = '{}'", projectDescriptionTuple2.v1(), projectDescriptionTuple2.v2()));
+		projectDescriptionTuples.forEach(projectDescriptionTuple2 -> LOG.trace("response for data model '{}' = '{}'", projectDescriptionTuple2._1, projectDescriptionTuple2._2));
 	}
 
 	public static void main(final String[] args) {

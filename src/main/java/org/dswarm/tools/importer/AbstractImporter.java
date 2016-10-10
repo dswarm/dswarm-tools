@@ -19,13 +19,14 @@ import java.io.File;
 import java.io.IOException;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.commons.lang3.tuple.Triple;
+import javaslang.Tuple;
+import javaslang.Tuple2;
+import javaslang.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Scheduler;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
@@ -52,14 +53,14 @@ public abstract class AbstractImporter<APICLIENT> {
 		scheduler = RxUtils.getObjectReaderScheduler(objectName);
 	}
 
-	public Observable<Tuple<String, String>> importObjects(final String importDirectoryName) throws DswarmToolsException {
+	public Observable<Tuple2<String, String>> importObjects(final String importDirectoryName) throws DswarmToolsException {
 
-		final Observable<Tuple<String, String>> importObjectTupleObservable = prepareImport(importDirectoryName);
+		final Observable<Tuple2<String, String>> importObjectTupleObservable = prepareImport(importDirectoryName);
 
 		return executeImport(importObjectTupleObservable);
 	}
 
-	protected Observable<Tuple<String, String>> prepareImport(final String importDirectoryName) throws DswarmToolsException {
+	protected Observable<Tuple2<String, String>> prepareImport(final String importDirectoryName) throws DswarmToolsException {
 
 		final String[] importObjectFileNames = DswarmToolUtils.readFileNames(importDirectoryName);
 
@@ -71,15 +72,15 @@ public abstract class AbstractImporter<APICLIENT> {
 				.map(this::extractObjectIdentifier);
 	}
 
-	protected abstract Observable<Tuple<String, String>> executeImport(final Observable<Tuple<String, String>> importObjectTupleObservable);
+	protected abstract Observable<Tuple2<String, String>> executeImport(final Observable<Tuple2<String, String>> importObjectTupleObservable);
 
 	protected abstract JsonNode deserializeObject(final String importObjectJSONString, final String errorMessage);
 
-	private static Tuple<String, String> readObjectFile(final String importDirectoryName, final String importObjectFileName) {
+	private static Tuple2<String, String> readObjectFile(final String importDirectoryName, final String importObjectFileName) {
 
 		try {
 
-			return Tuple.tuple(importDirectoryName + File.separator + importObjectFileName, DswarmToolUtils.readFromFile(importDirectoryName, importObjectFileName));
+			return Tuple.of(importDirectoryName + File.separator + importObjectFileName, DswarmToolUtils.readFromFile(importDirectoryName, importObjectFileName));
 		} catch (final IOException e) {
 
 			final String message = String.format("something went wrong, while trying to read file '%s' in folder '%s'", importObjectFileName, importDirectoryName);
@@ -90,23 +91,23 @@ public abstract class AbstractImporter<APICLIENT> {
 		}
 	}
 
-	private Triple<String, JsonNode, String> deserializeObjectFile(final Tuple<String, String> importObjectTuple) {
+	private Tuple3<String, JsonNode, String> deserializeObjectFile(final Tuple2<String, String> importObjectTuple) {
 
-		final String absoluteImportObjectFileName = importObjectTuple.v1();
-		final String importObjectJSONString = importObjectTuple.v2();
+		final String absoluteImportObjectFileName = importObjectTuple._1;
+		final String importObjectJSONString = importObjectTuple._2;
 
 		final String errorMessage = String.format("something went wrong, while trying to deserialize file '%s'", absoluteImportObjectFileName);
 
 		final JsonNode importObjectJSON = deserializeObject(importObjectJSONString, errorMessage);
 
-		return Triple.of(absoluteImportObjectFileName, importObjectJSON, importObjectJSONString);
+		return Tuple.of(absoluteImportObjectFileName, importObjectJSON, importObjectJSONString);
 	}
 
-	protected Tuple<String, String> extractObjectIdentifier(final Triple<String, JsonNode, String> importObjectTriple) {
+	protected Tuple2<String, String> extractObjectIdentifier(final Tuple3<String, JsonNode, String> importObjectTriple) {
 
-		final String absoluteImportObjectFileName = importObjectTriple.getLeft();
-		final JsonNode importObjectJSON = importObjectTriple.getMiddle();
-		final String importObjectJSONString = importObjectTriple.getRight();
+		final String absoluteImportObjectFileName = importObjectTriple._1;
+		final JsonNode importObjectJSON = importObjectTriple._2;
+		final String importObjectJSONString = importObjectTriple._3;
 
 		final JsonNode importObjectIdentifierJsonNode = importObjectJSON.get(DswarmToolsStatics.UUID_IDENTIFIER);
 
@@ -121,6 +122,6 @@ public abstract class AbstractImporter<APICLIENT> {
 
 		final String importObjectIdentifier = importObjectIdentifierJsonNode.asText();
 
-		return Tuple.tuple(importObjectIdentifier, importObjectJSONString);
+		return Tuple.of(importObjectIdentifier, importObjectJSONString);
 	}
 }

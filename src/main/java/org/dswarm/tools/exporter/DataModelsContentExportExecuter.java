@@ -19,11 +19,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import javaslang.Tuple;
+import javaslang.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.AbstractExecuter;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.apiclients.DswarmProjectsAPIClient;
@@ -65,11 +66,11 @@ public class DataModelsContentExportExecuter extends AbstractExecuter {
 		final DataModelsContentExporter dataModelsContentExporter = new DataModelsContentExporter(dswarmGraphExtensionAPIBaseURI);
 
 		// fetch input data model identifiers + record class URIs of input schemata
-		final Observable<Tuple<String, String>> readDataModelRequestInputTupleObservable = dswarmProjectsAPIClient.fetchObjects()
+		final Observable<Tuple2<String, String>> readDataModelRequestInputTupleObservable = dswarmProjectsAPIClient.fetchObjects()
 				.map(projectTuple -> {
 
-					final String projectIdentifier = projectTuple.v1();
-					final String projectJSONString = projectTuple.v2();
+					final String projectIdentifier = projectTuple._1;
+					final String projectJSONString = projectTuple._2;
 
 					final String errorMessage = String.format("something went wrong, while deserializing project '%s'", projectIdentifier);
 
@@ -83,7 +84,7 @@ public class DataModelsContentExportExecuter extends AbstractExecuter {
 
 					final String inputSchemaRecordClassURI = DswarmToolUtils.getRecordClassURI(inputDataModel);
 
-					return Tuple.tuple(inputDataModelID, inputSchemaRecordClassURI);
+					return Tuple.of(inputDataModelID, inputSchemaRecordClassURI);
 				})
 				.distinct();
 

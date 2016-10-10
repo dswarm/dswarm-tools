@@ -50,6 +50,7 @@
 		<junit.version>4.12</junit.version>
 		<version.slf4j.api>1.7.21</version.slf4j.api>
 		<version.logback>1.1.7</version.logback>
+		<version.javaslang>2.0.4</version.javaslang>
 	</properties>
 
 	<prerequisites>
@@ -286,22 +287,10 @@
 			<version>${version.commons-io}</version>
 		</dependency>
 
-		<!-- D:SWARM -->
-
 		<dependency>
-			<groupId>org.dswarm</groupId>
-			<artifactId>common</artifactId>
-			<version>${dswarm.commons.version}</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.apache.jena</groupId>
-					<artifactId>jena-core</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.apache.commons</groupId>
-					<artifactId>commons-lang3</artifactId>
-				</exclusion>
-			</exclusions>
+			<groupId>io.javaslang</groupId>
+			<artifactId>javaslang</artifactId>
+			<version>${version.javaslang}</version>
 		</dependency>
 
 		<!-- Logging -->
