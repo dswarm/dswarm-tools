@@ -27,7 +27,7 @@ import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.rx.RxWebTarget;
 import org.glassfish.jersey.client.rx.rxjava.RxObservable;
 import org.glassfish.jersey.client.rx.rxjava.RxObservableInvoker;
-import org.glassfish.jersey.filter.LoggingFilter;
+import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +55,7 @@ public abstract class AbstractAPIClient {
 			.property(ClientProperties.CONNECT_TIMEOUT, REQUEST_TIMEOUT)
 			.property(ClientProperties.READ_TIMEOUT, REQUEST_TIMEOUT);
 
-	private static final Client CLIENT = BUILDER.register(new LoggingFilter()).build();
+	private static final Client CLIENT = BUILDER.register(new LoggingFeature()).build();
 
 	protected static final String SLASH = "/";
 
