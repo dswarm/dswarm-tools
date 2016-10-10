@@ -155,14 +155,14 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 
 					final int responseStatus = response.getStatus();
 
-					if(responseStatus != 200) {
+					if(responseStatus != 201) {
 
-						LOG.error("could not retrieve '{}' '{}' (got response status = '{}')", objectName, objectIdentifier, responseStatus);
+						LOG.error("could not create '{}' '{}' (got response status = '{}')", objectName, objectIdentifier, responseStatus);
 
 						return false;
 					}
 
-					LOG.info("could retrieve '{}' '{}'", objectName, objectIdentifier);
+					LOG.info("could create '{}' '{}'", objectName, objectIdentifier);
 
 					return true;
 				})
