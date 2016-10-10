@@ -31,6 +31,7 @@ import org.glassfish.jersey.logging.LoggingFeature;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import rx.Scheduler;
 
 import org.dswarm.tools.utils.DswarmToolUtils;
@@ -54,9 +55,10 @@ public abstract class AbstractAPIClient {
 			.property(ClientProperties.OUTBOUND_CONTENT_LENGTH_BUFFER, CHUNK_SIZE)
 			.property(ClientProperties.CONNECT_TIMEOUT, REQUEST_TIMEOUT)
 			.property(ClientProperties.READ_TIMEOUT, REQUEST_TIMEOUT)
-			.property(LoggingFeature.LOGGING_FEATURE_VERBOSITY, LoggingFeature.Verbosity.HEADERS_ONLY);
+			.property(LoggingFeature.LOGGING_FEATURE_VERBOSITY_CLIENT, LoggingFeature.Verbosity.HEADERS_ONLY)
+			.property(LoggingFeature.LOGGING_FEATURE_LOGGER_LEVEL_CLIENT, Level.INFO.toString());
 
-	private static final Client CLIENT = BUILDER.build();
+	private static final Client CLIENT = BUILDER.register(LoggingFeature.class).build();
 
 	protected static final String SLASH = "/";
 
