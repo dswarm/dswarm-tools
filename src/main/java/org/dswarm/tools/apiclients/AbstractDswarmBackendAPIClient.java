@@ -66,8 +66,22 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.get(String.class)
+		return rx.get()
 				.observeOn(exportScheduler)
+				.filter(response -> {
+
+					final int responseStatus = response.getStatus();
+
+					if(responseStatus != 200) {
+
+						LOG.error("could not retrieve all '{}s' (got response status = '{}')", objectName, responseStatus);
+
+						return false;
+					}
+
+					return true;
+				})
+				.map(response -> response.readEntity(String.class))
 				.map(objectDescriptionsJSON -> {
 
 					final String errorMessage = String.format("something went wrong, while trying to retrieve short descriptions of all %ss", objectName);
