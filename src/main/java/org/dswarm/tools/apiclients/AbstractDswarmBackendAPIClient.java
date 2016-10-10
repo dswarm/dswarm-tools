@@ -17,6 +17,7 @@ package org.dswarm.tools.apiclients;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import javaslang.Tuple2;
 import org.glassfish.jersey.client.rx.RxWebTarget;
@@ -83,6 +84,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 
 					return true;
 				})
+				.filter(Response::hasEntity)
 				.map(response -> response.readEntity(String.class))
 				.map(objectDescriptionsJSON -> {
 
@@ -123,6 +125,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 
 					return true;
 				})
+				.filter(Response::hasEntity)
 				.map(response -> response.readEntity(String.class))
 				.map(objectDescriptionJSONString -> {
 
@@ -163,6 +166,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 
 					return true;
 				})
+				.filter(Response::hasEntity)
 				.map(response -> response.readEntity(String.class))
 				.map(responseObjectDescriptionJSONString -> {
 

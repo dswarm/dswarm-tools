@@ -197,6 +197,7 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 
 					return true;
 				})
+				.filter(Response::hasEntity)
 				.map(response -> response.readEntity(String.class))
 				.map(dataModelGDMJSONString -> getObjectsJSON(dataModelId, dataModelGDMJSONString))
 				.map(dataModelContentJSON -> serializeObjectJSON(dataModelId, dataModelContentJSON));
