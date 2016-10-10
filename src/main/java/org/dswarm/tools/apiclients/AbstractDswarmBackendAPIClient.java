@@ -114,8 +114,22 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.post(Entity.entity(objectDescriptionJSONString, MediaType.APPLICATION_JSON), String.class)
+		return rx.post(Entity.entity(objectDescriptionJSONString, MediaType.APPLICATION_JSON))
 				.observeOn(importScheduler)
+				.filter(response -> {
+
+					final int responseStatus = response.getStatus();
+
+					if(responseStatus != 200) {
+
+						LOG.error("could not retrieve '{}' '{}' (got response status = '{}')", objectName, objectIdentifier, responseStatus);
+
+						return false;
+					}
+
+					return true;
+				})
+				.map(response -> response.readEntity(String.class))
 				.map(responseObjectDescriptionJSONString -> {
 
 					LOG.debug("imported full {} description for {} '{}'", objectName, objectName, objectIdentifier);

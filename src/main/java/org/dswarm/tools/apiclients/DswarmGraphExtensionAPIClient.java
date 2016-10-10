@@ -180,8 +180,22 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.post(Entity.entity(requestJSONString, MediaType.APPLICATION_JSON), String.class)
+		return rx.post(Entity.entity(requestJSONString, MediaType.APPLICATION_JSON))
 				.observeOn(scheduler)
+				.filter(response -> {
+
+					final int responseStatus = response.getStatus();
+
+					if(responseStatus != 200) {
+
+						LOG.error("could not retrieve content of data model '{}' (got response status = '{}')", dataModelId, responseStatus);
+
+						return false;
+					}
+
+					return true;
+				})
+				.map(response -> response.readEntity(String.class))
 				.map(dataModelGDMJSONString -> {
 
 					LOG.debug("{} content of data model '{}'", type, dataModelId);
