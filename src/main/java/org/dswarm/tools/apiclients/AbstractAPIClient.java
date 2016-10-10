@@ -53,9 +53,10 @@ public abstract class AbstractAPIClient {
 			.property(ClientProperties.REQUEST_ENTITY_PROCESSING, CHUNKED)
 			.property(ClientProperties.OUTBOUND_CONTENT_LENGTH_BUFFER, CHUNK_SIZE)
 			.property(ClientProperties.CONNECT_TIMEOUT, REQUEST_TIMEOUT)
-			.property(ClientProperties.READ_TIMEOUT, REQUEST_TIMEOUT);
+			.property(ClientProperties.READ_TIMEOUT, REQUEST_TIMEOUT)
+			.property(LoggingFeature.LOGGING_FEATURE_VERBOSITY, LoggingFeature.Verbosity.HEADERS_ONLY);
 
-	private static final Client CLIENT = BUILDER.register(new LoggingFeature()).build();
+	private static final Client CLIENT = BUILDER.build();
 
 	protected static final String SLASH = "/";
 
