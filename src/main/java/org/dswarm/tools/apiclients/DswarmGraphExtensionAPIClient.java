@@ -193,15 +193,12 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 						return false;
 					}
 
+					LOG.info("could retrieve content of data model '{}'", dataModelId);
+
 					return true;
 				})
 				.map(response -> response.readEntity(String.class))
-				.map(dataModelGDMJSONString -> {
-
-					LOG.debug("{} content of data model '{}'", type, dataModelId);
-
-					return getObjectsJSON(dataModelId, dataModelGDMJSONString);
-				})
+				.map(dataModelGDMJSONString -> getObjectsJSON(dataModelId, dataModelGDMJSONString))
 				.map(dataModelContentJSON -> serializeObjectJSON(dataModelId, dataModelContentJSON));
 	}
 

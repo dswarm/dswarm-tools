@@ -79,6 +79,8 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 						return false;
 					}
 
+					LOG.info("got a 200 for '{}s' retrieval", objectName);
+
 					return true;
 				})
 				.map(response -> response.readEntity(String.class))
@@ -104,8 +106,24 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.get(String.class)
+		return rx.get()
 				.observeOn(exportScheduler)
+				.filter(response -> {
+
+					final int responseStatus = response.getStatus();
+
+					if(responseStatus != 200) {
+
+						LOG.error("could not retrieve '{}' with id = '{}' (got response status = '{}')", objectName, objectIdentifier, responseStatus);
+
+						return false;
+					}
+
+					LOG.info("got a 200 for '{}' with id = '{}' retrieval", objectName, objectIdentifier);
+
+					return true;
+				})
+				.map(response -> response.readEntity(String.class))
 				.map(objectDescriptionJSONString -> {
 
 					LOG.debug("retrieved full {} description for {} '{}'", objectName, objectName, objectIdentifier);
@@ -140,6 +158,8 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 
 						return false;
 					}
+
+					LOG.info("could retrieve '{}' '{}'", objectName, objectIdentifier);
 
 					return true;
 				})
