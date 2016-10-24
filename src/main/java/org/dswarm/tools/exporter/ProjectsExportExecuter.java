@@ -65,6 +65,7 @@ public class ProjectsExportExecuter extends AbstractExecuter {
 		Iterable<String> projectDescriptions = projectDescriptionJSONStringObservable
 				.doOnNext(projectDescriptionJSONString -> counter.incrementAndGet())
 				.doOnCompleted(() -> LOG.info("exported '{}' projects from '{}' to '{}'", counter.get(), dswarmBackendAPIBaseURI, exportDirectoryName))
+				.doOnCompleted(() -> System.exit(0))
 				.toBlocking().toIterable();
 
 		projectDescriptions.forEach(projectDescription -> LOG.trace("exported project description '{}'", projectDescription));

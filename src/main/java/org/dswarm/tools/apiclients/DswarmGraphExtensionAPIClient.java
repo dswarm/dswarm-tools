@@ -19,8 +19,7 @@ import java.io.BufferedInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -29,8 +28,9 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.net.HttpHeaders;
 import com.google.common.util.concurrent.Futures;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.Triple;
+import javaslang.Tuple;
+import javaslang.Tuple2;
+import javaslang.Tuple3;
 import org.glassfish.jersey.client.rx.RxWebTarget;
 import org.glassfish.jersey.client.rx.rxjava.RxObservableInvoker;
 import org.glassfish.jersey.media.multipart.MultiPart;
@@ -38,9 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Scheduler;
-import rx.subjects.PublishSubject;
+import rx.schedulers.Schedulers;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
@@ -65,6 +64,8 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 
 	private static final String WRITE_GDM = "write to graph database";
 
+	private static final Scheduler IMPORT_SCHEDULER = Schedulers.from(Executors.newSingleThreadExecutor());
+
 	static {
 
 		System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
@@ -75,31 +76,22 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 		super(dswarmGraphExtensionAPIBaseURI, DswarmToolsStatics.DATA_MODEL);
 	}
 
-	public Observable<Tuple<String, String>> fetchDataModelsContent(final Observable<Tuple<String, String>> dataModelRequestInputObservable) {
+	public Observable<Tuple2<String, String>> fetchDataModelsContent(final Observable<Tuple2<String, String>> dataModelRequestInputObservable) {
 
 		return dataModelRequestInputObservable
 				.flatMap(dataModelRequestInput -> generateReadDataModelRequest(dataModelRequestInput)
 						.flatMap(this::retrieveDataModelContent));
 	}
 
-	public Observable<Tuple<String, String>> importDataModelsContent(final Observable<Triple<String, String, String>> dataModelWriteRequestTripleObservable) {
+	public Observable<Tuple2<String, String>> importDataModelsContent(final Observable<Tuple3<String, String, InputStream>> dataModelWriteRequestTripleObservable) {
 
-		return dataModelWriteRequestTripleObservable.flatMap(dataModelWriteRequestTriple -> {
-
-			try {
-
-				return importDataModelContent(dataModelWriteRequestTriple);
-			} catch (final DswarmToolsException e) {
-
-				throw DswarmToolsError.wrap(e);
-			}
-		});
+		return dataModelWriteRequestTripleObservable.flatMap(this::importDataModelContent, 1);
 	}
 
-	private static Observable<Tuple<String, String>> generateReadDataModelRequest(final Tuple<String, String> dataModelRequestInputTuple) {
+	private static Observable<Tuple2<String, String>> generateReadDataModelRequest(final Tuple2<String, String> dataModelRequestInputTuple) {
 
-		final String dataModelId = dataModelRequestInputTuple.v1();
-		final String recordClassURI = dataModelRequestInputTuple.v2();
+		final String dataModelId = dataModelRequestInputTuple._1;
+		final String recordClassURI = dataModelRequestInputTuple._2;
 
 		final String dataModelURI = String.format(DswarmToolsStatics.DATA_MODEL_URI_TEMPLATE, dataModelId);
 
@@ -109,19 +101,19 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 				.put(DswarmToolsStatics.RECORD_CLASS_URI_IDENTIFIER, recordClassURI);
 
 		return Observable.from(Futures.immediateFuture(DswarmToolUtils.serialize(requestJSON, "something went wrong while serializing the request JSON for the read-data-model-content-request")))
-				.map(requestJSONString -> Tuple.tuple(dataModelId, requestJSONString));
+				.map(requestJSONString -> Tuple.of(dataModelId, requestJSONString));
 	}
 
-	private Observable<Tuple<String, String>> retrieveDataModelContent(final Tuple<String, String> readDataModelContentRequestTuple) {
+	private Observable<Tuple2<String, String>> retrieveDataModelContent(final Tuple2<String, String> readDataModelContentRequestTuple) {
 
 		return executePOSTRequest(readDataModelContentRequestTuple, READ_DATA_MODEL_CONTENT_ENDPOINT, EXPORT_TYPE, exportScheduler);
 	}
 
-	private Observable<Tuple<String, String>> importDataModelContent(final Triple<String, String, String> writeDataModelContentRequestTriple) throws DswarmToolsException {
+	private Observable<Tuple2<String, String>> importDataModelContent(final Tuple3<String, String, InputStream> writeDataModelContentRequestTriple) {
 
-		final String dataModelId = writeDataModelContentRequestTriple.getLeft();
-		final String writeDataModelContentRequestJSONString = writeDataModelContentRequestTriple.getMiddle();
-		final String dataModelContentJSONString = writeDataModelContentRequestTriple.getRight();
+		final String dataModelId = writeDataModelContentRequestTriple._1;
+		final String writeDataModelContentRequestJSONString = writeDataModelContentRequestTriple._2;
+		final InputStream dataModelContentJSONIS = writeDataModelContentRequestTriple._3;
 
 		LOG.debug("metadata for write data model content request = '{}'", writeDataModelContentRequestJSONString);
 
@@ -129,10 +121,8 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 
 		final RxObservableInvoker rx = rxWebTarget.request(MULTIPART_MIXED).header(HttpHeaders.TRANSFER_ENCODING, CHUNKED_TRANSFER_ENCODING).rx();
 
-		final InputStream input = IOUtils.toInputStream(dataModelContentJSONString, StandardCharsets.UTF_8);
-
 		final MultiPart multiPart = new MultiPart();
-		final BufferedInputStream entity1 = new BufferedInputStream(input, CHUNK_SIZE);
+		final BufferedInputStream entity1 = new BufferedInputStream(dataModelContentJSONIS, CHUNK_SIZE);
 
 		multiPart
 				.bodyPart(writeDataModelContentRequestJSONString, MediaType.APPLICATION_JSON_TYPE)
@@ -141,47 +131,48 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 		// POST the request
 		final Entity<MultiPart> entity = Entity.entity(multiPart, MULTIPART_MIXED);
 
-		final Observable<Response> post = rx.post(entity).observeOn(importScheduler);
+		final Observable<Response> post = rx.post(entity).observeOn(IMPORT_SCHEDULER);
 
-		final PublishSubject<Response> asyncPost = PublishSubject.create();
-		asyncPost.subscribe(response -> {
+		return post.map(response -> {
+
+			int status = response.getStatus();
 
 			try {
 
 				closeResource(multiPart, WRITE_GDM);
-				closeResource(input, WRITE_GDM);
+				closeResource(entity1, WRITE_GDM);
+				closeResource(dataModelContentJSONIS, WRITE_GDM);
 
-				//TODO maybe check status code here, i.e., should be 200
-
-				LOG.debug("wrote GDM data for data model '{}' into data hub", dataModelId);
 			} catch (final DswarmToolsException e) {
 
 				throw DswarmToolsError.wrap(e);
 			}
-		}, throwable -> {
 
-			throw DswarmToolsError.wrap(new DswarmToolsException(
-					String.format("Couldn't store GDM data into database. Received status code '%s' from database endpoint.",
-							throwable.getMessage())));
-		}, () -> LOG.debug("completely wrote GDM data for data model '{}' into data hub", dataModelId));
+			if (status == 200) {
 
-		post.subscribe(asyncPost);
+				LOG.debug("wrote GDM data for data model '{}' into data hub", dataModelId);
+			} else {
 
-		return asyncPost.map(response -> {
+				throw DswarmToolsError.wrap(new DswarmToolsException(
+						String.format("Couldn't store GDM data into database. Received status code '%s' from database endpoint (response body = '%s').", status, response.readEntity(String.class))));
+			}
 
-			int status = response.getStatus();
+			return Tuple.of(dataModelId, String.valueOf(status));
+		})
+				.doOnError(throwable -> {
 
-			return Tuple.tuple(dataModelId, String.valueOf(status));
-		});
+					throw DswarmToolsError.wrap(new DswarmToolsException(String.format("Couldn't store GDM data into database (err0r = '%s')", throwable.getMessage())));
+				})
+				.doOnCompleted(() -> LOG.debug("completely wrote GDM data for data model '{}' into data hub", dataModelId));
 	}
 
-	private Observable<Tuple<String, String>> executePOSTRequest(final Tuple<String, String> requestTuple,
+	private Observable<Tuple2<String, String>> executePOSTRequest(final Tuple2<String, String> requestTuple,
 	                                                             final String requestURI,
 	                                                             final String type,
 	                                                             final Scheduler scheduler) {
 
-		final String dataModelId = requestTuple.v1();
-		final String requestJSONString = requestTuple.v2();
+		final String dataModelId = requestTuple._1;
+		final String requestJSONString = requestTuple._2;
 
 		final RxWebTarget<RxObservableInvoker> rxWebTarget = rxWebTarget(requestURI);
 
@@ -189,14 +180,26 @@ public final class DswarmGraphExtensionAPIClient extends AbstractAPIClient {
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.post(Entity.entity(requestJSONString, MediaType.APPLICATION_JSON), String.class)
+		return rx.post(Entity.entity(requestJSONString, MediaType.APPLICATION_JSON))
 				.observeOn(scheduler)
-				.map(dataModelGDMJSONString -> {
+				.filter(response -> {
 
-					LOG.debug("{} content of data model '{}'", type, dataModelId);
+					final int responseStatus = response.getStatus();
 
-					return getObjectsJSON(dataModelId, dataModelGDMJSONString);
+					if(responseStatus != 200) {
+
+						LOG.error("could not retrieve content of data model '{}' (got response status = '{}')", dataModelId, responseStatus);
+
+						return false;
+					}
+
+					LOG.info("could retrieve content of data model '{}'", dataModelId);
+
+					return true;
 				})
+				.filter(Response::hasEntity)
+				.map(response -> response.readEntity(String.class))
+				.map(dataModelGDMJSONString -> getObjectsJSON(dataModelId, dataModelGDMJSONString))
 				.map(dataModelContentJSON -> serializeObjectJSON(dataModelId, dataModelContentJSON));
 	}
 

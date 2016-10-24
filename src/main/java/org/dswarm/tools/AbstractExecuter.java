@@ -19,10 +19,10 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import javaslang.Tuple;
+import javaslang.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.dswarm.common.types.Tuple;
 
 /**
  * Abstract executer - includes methods for parsing the arguments and printing the help.
@@ -53,10 +53,10 @@ public abstract class AbstractExecuter {
 						throw DswarmToolsError.wrap(e);
 					}
 				})
-				.collect(Collectors.toMap(Tuple::v1, Tuple::v2));
+				.collect(Collectors.toMap(Tuple2::_1, Tuple2::_2));
 	}
 
-	protected static Tuple<String, String> parseArg(final String arg) throws DswarmToolsException {
+	protected static Tuple2<String, String> parseArg(final String arg) throws DswarmToolsException {
 
 		if (!arg.contains(DswarmToolsStatics.EQUALS)) {
 
@@ -69,6 +69,6 @@ public abstract class AbstractExecuter {
 
 		final String[] split = arg.split(DswarmToolsStatics.EQUALS);
 
-		return Tuple.tuple(split[0], split[1]);
+		return Tuple.of(split[0], split[1]);
 	}
 }

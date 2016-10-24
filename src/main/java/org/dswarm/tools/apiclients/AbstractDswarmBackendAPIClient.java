@@ -17,14 +17,15 @@ package org.dswarm.tools.apiclients;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
+import javaslang.Tuple2;
 import org.glassfish.jersey.client.rx.RxWebTarget;
 import org.glassfish.jersey.client.rx.rxjava.RxObservableInvoker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.utils.DswarmToolUtils;
 
@@ -44,7 +45,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 		super(dswarmBackendAPIBaseURI, objectName);
 	}
 
-	public Observable<Tuple<String, String>> fetchObjects() {
+	public Observable<Tuple2<String, String>> fetchObjects() {
 
 		// 1. retrieve all objects (in short form)
 		return retrieveAllObjectIds()
@@ -52,7 +53,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.flatMap(this::retrieveObject);
 	}
 
-	public Observable<Tuple<String, String>> importObjects(final Observable<Tuple<String, String>> objectDescriptionTupleObservable) {
+	public Observable<Tuple2<String, String>> importObjects(final Observable<Tuple2<String, String>> objectDescriptionTupleObservable) {
 
 		return objectDescriptionTupleObservable.flatMap(this::importObject);
 	}
@@ -66,8 +67,25 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.get(String.class)
+		return rx.get()
 				.observeOn(exportScheduler)
+				.filter(response -> {
+
+					final int responseStatus = response.getStatus();
+
+					if(responseStatus != 200) {
+
+						LOG.error("could not retrieve all '{}s' (got response status = '{}')", objectName, responseStatus);
+
+						return false;
+					}
+
+					LOG.info("got a 200 for '{}s' retrieval", objectName);
+
+					return true;
+				})
+				.filter(Response::hasEntity)
+				.map(response -> response.readEntity(String.class))
 				.map(objectDescriptionsJSON -> {
 
 					final String errorMessage = String.format("something went wrong, while trying to retrieve short descriptions of all %ss", objectName);
@@ -78,7 +96,7 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 						.map(objectDescriptionJSON -> objectDescriptionJSON.get(DswarmToolsStatics.UUID_IDENTIFIER).asText()));
 	}
 
-	public Observable<Tuple<String, String>> retrieveObject(final String objectIdentifier) {
+	public Observable<Tuple2<String, String>> retrieveObject(final String objectIdentifier) {
 
 		LOG.debug("trying to retrieve full {} description for {} '{}'", objectName, objectName, objectIdentifier);
 
@@ -90,8 +108,25 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.get(String.class)
+		return rx.get()
 				.observeOn(exportScheduler)
+				.filter(response -> {
+
+					final int responseStatus = response.getStatus();
+
+					if(responseStatus != 200) {
+
+						LOG.error("could not retrieve '{}' with id = '{}' (got response status = '{}')", objectName, objectIdentifier, responseStatus);
+
+						return false;
+					}
+
+					LOG.info("got a 200 for '{}' with id = '{}' retrieval", objectName, objectIdentifier);
+
+					return true;
+				})
+				.filter(Response::hasEntity)
+				.map(response -> response.readEntity(String.class))
 				.map(objectDescriptionJSONString -> {
 
 					LOG.debug("retrieved full {} description for {} '{}'", objectName, objectName, objectIdentifier);
@@ -101,10 +136,10 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.map(objectDescriptionJSON -> serializeObjectJSON(objectIdentifier, objectDescriptionJSON));
 	}
 
-	protected Observable<Tuple<String, String>> importObject(final Tuple<String, String> objectDescriptionTuple) {
+	protected Observable<Tuple2<String, String>> importObject(final Tuple2<String, String> objectDescriptionTuple) {
 
-		final String objectIdentifier = objectDescriptionTuple.v1();
-		final String objectDescriptionJSONString = objectDescriptionTuple.v2();
+		final String objectIdentifier = objectDescriptionTuple._1;
+		final String objectDescriptionJSONString = objectDescriptionTuple._2;
 
 		LOG.debug("trying to import full {} description of {} '{}'", objectName, objectName, objectIdentifier);
 
@@ -114,8 +149,25 @@ public abstract class AbstractDswarmBackendAPIClient extends AbstractAPIClient {
 				.accept(MediaType.APPLICATION_JSON_TYPE)
 				.rx();
 
-		return rx.post(Entity.entity(objectDescriptionJSONString, MediaType.APPLICATION_JSON), String.class)
+		return rx.post(Entity.entity(objectDescriptionJSONString, MediaType.APPLICATION_JSON))
 				.observeOn(importScheduler)
+				.filter(response -> {
+
+					final int responseStatus = response.getStatus();
+
+					if(responseStatus != 201) {
+
+						LOG.error("could not create '{}' '{}' (got response status = '{}')", objectName, objectIdentifier, responseStatus);
+
+						return false;
+					}
+
+					LOG.info("could create '{}' '{}'", objectName, objectIdentifier);
+
+					return true;
+				})
+				.filter(Response::hasEntity)
+				.map(response -> response.readEntity(String.class))
 				.map(responseObjectDescriptionJSONString -> {
 
 					LOG.debug("imported full {} description for {} '{}'", objectName, objectName, objectIdentifier);

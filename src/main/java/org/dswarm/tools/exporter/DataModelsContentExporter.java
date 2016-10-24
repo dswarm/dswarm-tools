@@ -15,9 +15,9 @@
  */
 package org.dswarm.tools.exporter;
 
+import javaslang.Tuple2;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.apiclients.DswarmGraphExtensionAPIClient;
 
@@ -31,7 +31,7 @@ public final class DataModelsContentExporter extends AbstractExporter<DswarmGrap
 		super(new DswarmGraphExtensionAPIClient(dswarmGraphExtensionAPIBaseURI), DswarmToolsStatics.DATA_MODEL);
 	}
 
-	public Observable<String> exportObjectsContent(final String exportDirectoryName, final Observable<Tuple<String, String>> requestInputObservable) {
+	public Observable<String> exportObjectsContent(final String exportDirectoryName, final Observable<Tuple2<String, String>> requestInputObservable) {
 
 		return fetchObjectsContent(requestInputObservable)
 				.observeOn(scheduler)
@@ -40,13 +40,13 @@ public final class DataModelsContentExporter extends AbstractExporter<DswarmGrap
 	}
 
 	@Override
-	protected Observable<Tuple<String, String>> fetchObjects() {
+	protected Observable<Tuple2<String, String>> fetchObjects() {
 
 		// TODO (if needed)
 		return null;
 	}
 
-	private Observable<Tuple<String, String>> fetchObjectsContent(final Observable<Tuple<String, String>> dataModelRequestInputObservable) {
+	private Observable<Tuple2<String, String>> fetchObjectsContent(final Observable<Tuple2<String, String>> dataModelRequestInputObservable) {
 
 		return apiClient.fetchDataModelsContent(dataModelRequestInputObservable);
 	}

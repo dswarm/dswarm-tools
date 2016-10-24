@@ -15,33 +15,44 @@
  */
 package org.dswarm.tools.importer;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.commons.lang3.tuple.Triple;
+import javaslang.Tuple;
+import javaslang.Tuple2;
+import javaslang.Tuple3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.Scheduler;
 
-import org.dswarm.common.types.Tuple;
+import org.dswarm.tools.DswarmToolsError;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
 import org.dswarm.tools.apiclients.DswarmDataModelsAPIClient;
 import org.dswarm.tools.apiclients.DswarmGraphExtensionAPIClient;
 import org.dswarm.tools.utils.DswarmToolUtils;
+import org.dswarm.tools.utils.RxUtils;
 
 /**
  * @author tgaengler
  */
-public final class DataModelsContentImporter extends AbstractImporter<DswarmGraphExtensionAPIClient> {
+public final class DataModelsContentImporter {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DataModelsContentImporter.class);
 
+	private final String objectName;
+	private final Scheduler scheduler;
+	private final DswarmGraphExtensionAPIClient apiClient;
 	private final DswarmDataModelsAPIClient dswarmDataModelsAPIClient;
 
 	public DataModelsContentImporter(final String dswarmGraphExtensionAPIBaseURI, final String dswarmBackendAPIBaseURI) {
 
-		super(new DswarmGraphExtensionAPIClient(dswarmGraphExtensionAPIBaseURI), DswarmToolsStatics.DATA_MODEL);
-
+		apiClient = new DswarmGraphExtensionAPIClient(dswarmGraphExtensionAPIBaseURI);
+		objectName = DswarmToolsStatics.DATA_MODEL;
+		scheduler = RxUtils.getObjectReaderScheduler(objectName);
 		dswarmDataModelsAPIClient = new DswarmDataModelsAPIClient(dswarmBackendAPIBaseURI);
 	}
 
@@ -49,78 +60,89 @@ public final class DataModelsContentImporter extends AbstractImporter<DswarmGrap
 	 * @param importDirectoryName
 	 * @return v1 = data model identifier; v2 = data model metadata (JSON)
 	 */
-	public Observable<Tuple<String, String>> importObjectsContent(final String importDirectoryName) throws DswarmToolsException {
+	public Observable<Tuple2<String, String>> importObjectsContent(final String importDirectoryName) throws DswarmToolsException {
 
-		final Observable<Triple<String, String, String>> dataModelWriteRequestTripleObservable = prepareImport2(importDirectoryName);
+		final Observable<Tuple3<String, String, InputStream>> dataModelWriteRequestTripleObservable = prepareImport2(importDirectoryName);
 
 		return apiClient.importDataModelsContent(dataModelWriteRequestTripleObservable);
 	}
 
-	private Observable<Triple<String, String, String>> prepareImport2(final String importDirectoryName) throws DswarmToolsException {
+	protected Observable<Tuple2<String, InputStream>> prepareImport(final String importDirectoryName) throws DswarmToolsException {
+
+		final String[] importObjectFileNames = DswarmToolUtils.readFileNames(importDirectoryName);
+
+		// read objects from files and prepare content
+		return Observable.from(importObjectFileNames)
+				.observeOn(scheduler)
+				.map(importObjectFileName -> readObjectFile(importDirectoryName, importObjectFileName))
+				.map(this::extractObjectIdentifier);
+	}
+
+	private Observable<Tuple3<String, String, InputStream>> prepareImport2(final String importDirectoryName) throws DswarmToolsException {
 
 		// read objects from files and prepare content/generate data model write request metadata
-		final Observable<Tuple<String, String>> importObjectTupleObservable = prepareImport(importDirectoryName);
+		final Observable<Tuple2<String, InputStream>> importObjectTupleObservable = prepareImport(importDirectoryName);
 
-		return importObjectTupleObservable.flatMap(importObjectTuple -> {
+		return importObjectTupleObservable
+				.flatMap(importObjectTuple -> {
 
-			final String dataModelIdentifier = importObjectTuple.v1();
-			final String dataModelContentJSONString = importObjectTuple.v2();
+					final String dataModelIdentifier = importObjectTuple._1;
+					final InputStream dataModelContentJSONIS = importObjectTuple._2;
 
-			final Observable<Tuple<String, String>> dataModelMetadataTupleObservable = dswarmDataModelsAPIClient.retrieveObject(dataModelIdentifier);
+					final Observable<Tuple2<String, String>> dataModelMetadataTupleObservable = dswarmDataModelsAPIClient.retrieveObject(dataModelIdentifier);
 
-			return dataModelMetadataTupleObservable.map(dataModelMetadataTuple -> {
+					return dataModelMetadataTupleObservable.map(dataModelMetadataTuple -> {
 
-				final String dataModelMetadataJSONString = dataModelMetadataTuple.v2();
+						final String dataModelMetadataJSONString = dataModelMetadataTuple._2;
 
-				final String errorMessage = String.format("something went wrong, while deserializing data model '%s'", dataModelIdentifier);
+						final String errorMessage = String.format("something went wrong, while deserializing data model '%s'", dataModelIdentifier);
 
-				final ObjectNode dataModelMetadataJSON = DswarmToolUtils.deserializeAsObjectNode(dataModelMetadataJSONString, errorMessage);
+						final ObjectNode dataModelMetadataJSON = DswarmToolUtils.deserializeAsObjectNode(dataModelMetadataJSONString, errorMessage);
 
-				// generate data model write request metadata (JSON) with help of data model metadata (JSON)
-				final String dataModelWriteRequestMetadata = generateDataModelWriteRequestMetadata(dataModelIdentifier, dataModelMetadataJSON);
+						// generate data model write request metadata (JSON) with help of data model metadata (JSON)
+						final String dataModelWriteRequestMetadata = generateDataModelWriteRequestMetadata(dataModelIdentifier, dataModelMetadataJSON);
 
-				return Triple.of(dataModelIdentifier, dataModelWriteRequestMetadata, dataModelContentJSONString);
-			});
-		});
+						return Tuple.of(dataModelIdentifier, dataModelWriteRequestMetadata, dataModelContentJSONIS);
+					});
+				});
 	}
 
-	@Override
-	protected Observable<Tuple<String, String>> executeImport(final Observable<Tuple<String, String>> importObjectTupleObservable) {
+	protected Tuple2<String, InputStream> extractObjectIdentifier(final Tuple2<String, InputStream> importObjectTriple) {
 
-		// TODO
-
-		return null;
-	}
-
-	@Override
-	protected JsonNode deserializeObject(final String importObjectJSONString, final String errorMessage) {
-
-		return DswarmToolUtils.deserializeAsArrayNode(importObjectJSONString, errorMessage);
-	}
-
-	@Override
-	protected Tuple<String, String> extractObjectIdentifier(final Triple<String, JsonNode, String> importObjectTriple) {
-
-		final String absoluteImportObjectFileName = importObjectTriple.getLeft();
-		final String importObjectJSONString = importObjectTriple.getRight();
+		final String absoluteImportObjectFileName = importObjectTriple._1;
+		final InputStream importObjectJSONIS = importObjectTriple._2;
 
 		final String[] split = absoluteImportObjectFileName.split("\\.");
 
 		final String importObjectIdentifier = split[split.length - 2];
 
-		return Tuple.tuple(importObjectIdentifier, importObjectJSONString);
+		return Tuple.of(importObjectIdentifier, importObjectJSONIS);
 	}
 
+	private static Tuple2<String, InputStream> readObjectFile(final String importDirectoryName, final String importObjectFileName) {
+
+		try {
+
+			return Tuple.of(importDirectoryName + File.separator + importObjectFileName, DswarmToolUtils.readFromFile2(importDirectoryName, importObjectFileName));
+		} catch (final IOException e) {
+
+			final String message = String.format("something went wrong, while trying to read file '%s' in folder '%s'", importObjectFileName, importDirectoryName);
+
+			LOG.error(message, e);
+
+			throw DswarmToolsError.wrap(new DswarmToolsException(message, e));
+		}
+	}
 
 	private String generateDataModelWriteRequestMetadata(final String dataModelIdentifier, final ObjectNode dataModelMetadataJSON) {
 
 		final ObjectNode dataModelWriteRequestMetadataJSON = DswarmToolsStatics.MAPPER.createObjectNode();
 
 		final String dataModelURI = String.format(DswarmToolsStatics.DATA_MODEL_URI_TEMPLATE, dataModelIdentifier);
-		final String recorcClassURI = DswarmToolUtils.getRecordClassURI(dataModelMetadataJSON);
+		final String recordClassURI = DswarmToolUtils.getRecordClassURI(dataModelMetadataJSON);
 
 		dataModelWriteRequestMetadataJSON.put(DswarmToolsStatics.DATA_MODEL_URI_IDENTIFIER, dataModelURI)
-				.put(DswarmToolsStatics.RECORD_CLASS_URI_IDENTIFIER, recorcClassURI)
+				.put(DswarmToolsStatics.RECORD_CLASS_URI_IDENTIFIER, recordClassURI)
 				.put(DswarmToolsStatics.DEPRECATE_MISSING_RECORDS, Boolean.FALSE.toString())
 				.put(DswarmToolsStatics.ENABLE_VERSIONING, Boolean.FALSE.toString());
 

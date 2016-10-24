@@ -18,11 +18,11 @@ package org.dswarm.tools.importer;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javaslang.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import org.dswarm.common.types.Tuple;
 import org.dswarm.tools.AbstractExecuter;
 import org.dswarm.tools.DswarmToolsException;
 import org.dswarm.tools.DswarmToolsStatics;
@@ -35,6 +35,7 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 	private static final Logger LOG = LoggerFactory.getLogger(DataModelsContentImportExecuter.class);
 
 	private static final StringBuilder HELP_SB = new StringBuilder();
+	private static final String STATUS_CODE_200 = "200";
 
 	static {
 
@@ -57,17 +58,34 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 
 		final DataModelsContentImporter dataModelsContentImporter = new DataModelsContentImporter(dswarmGraphExtensionAPIBaseURI, dswarmBackendAPIBaseURI);
 
-		final Observable<Tuple<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName);
+		final Observable<Tuple2<String, String>> resultTupleObservable = dataModelsContentImporter.importObjectsContent(importDirectoryName);
 
 		final AtomicInteger counter = new AtomicInteger(0);
+		final AtomicInteger negativeCounter = new AtomicInteger(0);
 
-		final Iterable<Tuple<String, String>> resultTuples = resultTupleObservable
-				.doOnNext(resultTuple -> counter.incrementAndGet())
-				.doOnNext(resultTuple1 -> LOG.debug("imported content from data model '{}' to '{}'", resultTuple1.v1(), dswarmGraphExtensionAPIBaseURI))
-				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}'", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI))
-				.toBlocking().toIterable();
+		resultTupleObservable
+				.doOnNext(resultTuple1 -> {
 
-		resultTuples.forEach(resultTuple2 -> LOG.trace("response for data model '{}' = '{}'", resultTuple2.v1(), resultTuple2.v2()));
+					final String dataModelIdentifier = resultTuple1._1;
+					final String statusCode = resultTuple1._2;
+
+					if (STATUS_CODE_200.equals(statusCode)) {
+
+						counter.incrementAndGet();
+
+						LOG.debug("imported content from data model '{}' to '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI);
+					} else {
+
+						negativeCounter.incrementAndGet();
+
+						LOG.error("import of content from data model '{}' to '{}' fail with status code '{}'", dataModelIdentifier, dswarmGraphExtensionAPIBaseURI, statusCode);
+					}
+				})
+				.doOnCompleted(() -> LOG.info("imported content from '{}' data models from '{}' to '{}' ('{}' failed)", counter.get(), importDirectoryName, dswarmGraphExtensionAPIBaseURI, negativeCounter.get()))
+				.doOnCompleted(() -> System.exit(0))
+				.toBlocking()
+				.toIterable()
+				.forEach(resultTuple -> LOG.info("response for data model '{}' = '{}'", resultTuple._1, resultTuple._2));
 	}
 
 	public static void main(final String[] args) {
@@ -100,6 +118,8 @@ public class DataModelsContentImportExecuter extends AbstractExecuter {
 		try {
 
 			executeImport(dswarmBackendAPIBaseURI, dswarmGraphExtensionAPIBaseURI, importDirectoryName);
+
+			System.exit(0);
 		} catch (final Exception e) {
 
 			LOG.error("something went wrong at import execution.", e);
